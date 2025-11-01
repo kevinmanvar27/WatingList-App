@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "846443642703",
+    "project_id": "waitinglist-app-8b123",
+    "storage_bucket": "waitinglist-app-8b123.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:846443642703:android:6cf4bc7b784f63f556cf3a",
+        "android_client_info": {
+          "package_name": "com.example.waiting_list"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "846443642703-b9icrcbhu060cmljslqi1hnjg9vontj2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKPXVODlx59jLqCyumr1RIpKLMaVM940k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "846443642703-b9icrcbhu060cmljslqi1hnjg9vontj2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
