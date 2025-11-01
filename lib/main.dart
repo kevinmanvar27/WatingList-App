@@ -1,15 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:provider/provider.dart';
-import 'Screen/App_State.dart';
-import 'Screen/database.dart';
-import 'screens/splash_screen.dart';
+import 'splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  final db = await AppDatabase.open();
 
   if (Platform.isAndroid) {
     await Firebase.initializeApp(
@@ -23,14 +18,9 @@ Future<void> main() async {
   } else {
     await Firebase.initializeApp();
   }
-
-  runApp(
-    ChangeNotifierProvider(
-      create: (_) => AppState(db),
-      child: const MyApp(),
-    ),
-  );
+  runApp(MyApp());
 }
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 

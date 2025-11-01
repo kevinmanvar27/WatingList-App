@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:waiting_list/Screen/settings_screen.dart';
 import 'package:waiting_list/Screen/waiting_list_screen.dart';
-import '../screens/auth_screen.dart';
+import 'auth_screen.dart';
 import '../services/auth_service.dart';
-import 'App_State.dart';
+import 'Setting_Screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,11 +13,11 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  String selectedLocation = "Gujarat";
   int selectedIndex = 0;
 
   @override
   Widget build(BuildContext context) {
-    final appState = Provider.of<AppState>(context);
     final AuthService _auth = AuthService();
 
     Future<void> _signOut() async {
@@ -43,29 +41,37 @@ class _HomeScreenState extends State<HomeScreen> {
         toolbarHeight: 70,
         title: Row(
           children: [
-            Image.asset("assets/Images/re2.png", height: 38),
+            Image.asset("assets/Images/re2.png", height: 40),
             const SizedBox(width: 100),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 shape: StadiumBorder(),
+                elevation: 0,
               ),
-              icon: Icon(Icons.add, color: Color(0xFFF9FAFB)),
-              label: Text("Add Person", style: TextStyle(color: Color(0xFFF9FAFB))),
-              onPressed: () => _showAddRestaurantDialog(context),
+              icon: Icon(Icons.add, color: Colors.black,size: 20,),
+              label: Text("Add Person", style: TextStyle(color: Color(0xFFF9FAFB),fontWeight: FontWeight.bold)),
+              onPressed: () {
+                _showAddUserDialog(context);
+              },
             ),
           ],
         ),
       ) : null,
 
-      body: IndexedStack(
-        index: selectedIndex,
-        children: [
-          _homeContent(appState),
-           //WaitingListScreen(),
-          const BusinessProfileScreen(),
-          SizedBox(), // for logout
-        ],
+      body: GestureDetector(
+        onTap: (){
+          FocusScope.of(context).unfocus();
+        },
+        child: IndexedStack(
+          index: selectedIndex,
+          children: [
+            _homeContent(),
+            WaitingListScreen(),
+            Setting_Screen(),
+            SizedBox(),
+          ],
+        ),
       ),
 
       bottomNavigationBar: Container(
@@ -128,8 +134,146 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// ✅ HOME TAB UI KEPT HERE
-  Widget _homeContent(AppState appState) {
+  Widget restaurantCard() {
+    return Container(
+      margin: EdgeInsets.only(top: 15),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 6,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+
+          /// IMAGE + OPEN BUTTON BELOW
+          Column(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  "assets/Images/app_logo.png",
+                  height: 50,
+                  width: 50,
+                  fit: BoxFit.cover,
+                ),
+              ),
+
+              SizedBox(height: 10),
+
+              SizedBox(
+                height: 25,
+                child: ElevatedButton(
+                  onPressed: () {},
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade400,
+                    elevation: 0,
+                    padding: EdgeInsets.symmetric(horizontal: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text("Open", style: TextStyle(fontSize: 13, color: Colors.white)),
+                ),
+              ),
+            ],
+          ),
+
+          SizedBox(width: 15),
+
+          /// TEXT INFORMATION
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "K-win kitchen",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 6),
+
+                Row(
+                  children: [
+                    Icon(Icons.location_on, size: 18, color: Colors.red),
+                    SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        "Shivallay Complex, Rajkot, Gujarat",
+                        style: TextStyle(fontSize: 13, color: Colors.black54),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          /// WAITING + CALL (ONLY ICON BUTTONS)
+          Column(
+            children: [
+
+              /// WAITING (Icon + Count Container)
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          "0",
+                          style: TextStyle(
+                            color: Colors.orange,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text("Waitng",style: TextStyle(fontSize: 10),)
+                  ],
+                ),
+              ),
+
+
+              SizedBox(height: 5),
+
+              /// CALL (Icon Only)
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.green.shade50
+                ),
+                child: IconButton(
+                  onPressed: () {},
+                  icon: Icon(Icons.call, color: Colors.green, size: 26),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+
+
+
+
+
+  Widget _homeContent() {
     final TextEditingController searchCtrl = TextEditingController();
 
     return Padding(
@@ -140,139 +284,317 @@ class _HomeScreenState extends State<HomeScreen> {
 
           Row(
             children: [
+              // SEARCH BOX
               Expanded(
-                child: TextField(
-                  controller: searchCtrl,
-                  decoration: InputDecoration(
-                    hintText: "Search restaurants...",
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    prefixIcon: Icon(Icons.search),
+                child: Container(
+                  height: 48,
+                  child: TextField(
+                    controller: searchCtrl,
+                    decoration: InputDecoration(
+                      hintText: "Search restaurants...",
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 15),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: Colors.grey.shade400),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: Colors.grey.shade400),
+                      ),
+                      prefixIcon: Icon(Icons.search, color: Colors.grey),
+                    ),
                   ),
-                  onChanged: (val) => appState.searchRestaurants(val),
                 ),
               ),
-              const SizedBox(width: 10),
+
+              SizedBox(width: 12),
+
               PopupMenuButton<String>(
-                onSelected: (value) => appState.setStateFilter(value),
+                color: Colors.white, // dropdown background color
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 4,
+                onSelected: (value) {
+                  setState(() {
+                    selectedLocation = value;
+                  });
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: "Gujarat",
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Gujarat"),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: "Maharashtra",
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Maharashtra"),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: "Rajasthan",
+                    child: Text("Rajasthan"),
+                  ),
+                ],
                 child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  height: 48,
+                  padding: EdgeInsets.symmetric(horizontal: 14),
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(10),
+                    color: Colors.white,
+                    border: Border.all(color: Colors.grey.shade400),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.location_on, size: 18, color: Colors.red),
-                      Text(" ${appState.selectedState}"),
+                      Icon(Icons.location_on, color: Colors.red, size: 20),
+                      SizedBox(width: 6),
+                      Text(
+                        selectedLocation,
+                        style: TextStyle(fontSize: 14, color: Colors.black87),
+                      ),
                     ],
                   ),
                 ),
-                itemBuilder: (context) => const [
-                  PopupMenuItem(value: "Gujarat", child: Text("Gujarat")),
-                  PopupMenuItem(value: "Maharashtra", child: Text("Maharashtra")),
-                  PopupMenuItem(value: "Rajasthan", child: Text("Rajasthan")),
-                ],
               ),
+
             ],
           ),
-          const SizedBox(height: 20),
 
-          if (appState.restaurants.isEmpty) ...[
-            const Spacer(),
-            const Text("No restaurants found",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 5),
-            const Text("Check back later for new restaurants"),
-            const Spacer(),
-          ]
-          else
-            Expanded(
-              child: ListView.builder(
-                itemCount: appState.restaurants.length,
-                itemBuilder: (context, i) {
-                  final r = appState.restaurants[i];
-                  return Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    child: ListTile(
-                      title: Text(r.name),
-                      subtitle: Text(r.state),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => WaitingListScreen(restaurant: r),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
+          SizedBox(height: 10),
+
+          /// RESTAURANT CARD LIST
+          Expanded(
+            child: ListView(
+              children: [
+                restaurantCard(),
+                // If more restaurants, duplicate or make dynamic later
+              ],
             ),
+          ),
         ],
       ),
     );
   }
+
+
+  void _showAddUserDialog(BuildContext context) {
+    final TextEditingController mobileCtrl = TextEditingController();
+    final TextEditingController nameCtrl = TextEditingController();
+    final TextEditingController personsCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+
+                Center(
+                  child: Text(
+                    "Add New User",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20),
+
+                Text("Mobile Number *",style: TextStyle(fontWeight: FontWeight.bold),),
+                SizedBox(height: 5),
+                TextField(
+                  controller: mobileCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    hintText: "Enter mobile number",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 12),
+
+                Text("Person Name *",style: TextStyle(fontWeight: FontWeight.bold),),
+                SizedBox(height: 5),
+                TextField(
+                  controller: nameCtrl,
+                  decoration: InputDecoration(
+                    hintText: "Enter person name",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 12),
+
+                Text("Total Persons",style: TextStyle(fontWeight: FontWeight.bold),),
+                SizedBox(height: 5),
+                TextField(
+                  controller: personsCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    hintText: "Enter total persons (optional)",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 25),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                          side: BorderSide(color: Color(0xFFFF6B00)),
+                          padding: EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                        child: Text("Cancel", style: TextStyle(color: Color(0xFFFF6B00),fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFFFF6B00),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                          padding: EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: Text("Add User", style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ),
+
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
 
   void _showLogoutDialog(BuildContext context, Function signOut) {
     showDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Row(
-          children: [
-            Icon(Icons.logout, color: Color(0xFFD9534F)),
-            SizedBox(width: 10),
-            Text("Confirm Logout"),
-          ],
+      barrierDismissible: true,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
         ),
-        content: Text("Are you sure you want to logout?",
-            style: TextStyle(fontSize: 16, color: Colors.black87)),
-        actions: [
-          TextButton(
-            child: Text("Cancel", style: TextStyle(fontSize: 16, color: Color(0xFFFF6B00))),
-            onPressed: () => Navigator.pop(context),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+
+              /// Icon Circle
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.logout, size: 30, color: Colors.red),
+              ),
+
+              const SizedBox(height: 20),
+
+              /// Title
+              Text(
+                "Confirm Logout",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              /// Subtitle
+              Text(
+                "Are you sure you want to log out of your account?",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.black54,
+                ),
+              ),
+
+              const SizedBox(height: 25),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+
+                  /// Cancel Button
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        side: BorderSide(color: Colors.grey.shade400),
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: Text("Cancel", style: TextStyle(color: Colors.black87, fontSize: 16)),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ),
+
+                  SizedBox(width: 10),
+
+                  /// Logout Button
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: Text("Logout", style: TextStyle(color: Colors.white, fontSize: 16)),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        signOut();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Color(0xFFD9534F)),
-            child: Text("Logout", style: TextStyle(color: Colors.white)),
-            onPressed: () {
-              Navigator.pop(context);
-              signOut();
-            },
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  void _showAddRestaurantDialog(BuildContext context) {
-    final appState = Provider.of<AppState>(context, listen: false);
-    final ctrl = TextEditingController();
 
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Add Restaurant'),
-        content: TextField(
-          controller: ctrl,
-          decoration: const InputDecoration(labelText: 'Restaurant name'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () async {
-              if (ctrl.text.trim().isNotEmpty) {
-                await appState.addRestaurant(ctrl.text.trim());
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _NavItem extends StatelessWidget {

@@ -2,14 +2,16 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-class BusinessProfileScreen extends StatefulWidget {
-  const BusinessProfileScreen({super.key});
+class Business_profile_screen extends StatefulWidget {
+  const Business_profile_screen({super.key});
 
   @override
-  State<BusinessProfileScreen> createState() => _BusinessProfileScreenState();
+  State<Business_profile_screen> createState() => _Business_profile_screenState();
 }
 
-class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
+class _Business_profile_screenState extends State<Business_profile_screen> {
+  bool _showForgotPinCard = false;
+
   File? _image;
   final ImagePicker _picker = ImagePicker();
 
@@ -25,62 +27,78 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text("Business Profile",
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF6B00),
-                shape: const StadiumBorder(),
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
+          title: Row(
+            children: [
+              Image.asset("assets/Images/re2.png", height: 40),
+              const SizedBox(width: 10),
+              const Spacer(),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFFFF6B00),
+                  shape: const StadiumBorder(),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  minimumSize: const Size(0, 32),
+                  elevation: 0,
+                ),
+                icon: const Icon(Icons.save, size: 18, color: Colors.white),
+                label: const Text(
+                  "Save All",
+                  style: TextStyle(color: Colors.white, fontSize: 13),
+                ),
+                onPressed: () {
+                  // Save Function Here
+                },
               ),
-              icon: const Icon(Icons.save, size: 18, color: Colors.white),
-              label:
-              const Text("Save All", style: TextStyle(color: Colors.white)),
-              onPressed: () {},
-            ),
+            ],
           ),
-        ],
-      ),
+        ),
+
 
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             _card(
-              child: GestureDetector(
-                onTap: pickImage,
-                child: Container(
-                  height: 160, // 👈 This will center the text inside
-                  alignment: Alignment.center,
-                  child: _image == null
-                      ? Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.camera_alt_outlined,
-                          size: 40, color: Colors.grey),
-                      SizedBox(height: 6),
-                      Text(
-                        "Tap to add logo",
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ],
-                  )
-                      : CircleAvatar(
-                    radius: 55,
-                    backgroundColor: Colors.grey.shade200,
-                    backgroundImage: FileImage(_image!),
+              child: Center(
+                child: GestureDetector(
+                  onTap: pickImage,
+                  child: Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.grey.shade200,
+                      image: _image != null
+                          ? DecorationImage(
+                        image: FileImage(_image!),
+                        fit: BoxFit.cover,
+                      )
+                          : null,
+                    ),
+                    child: _image == null
+                        ? Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.camera_alt_outlined,
+                            size: 35, color: Colors.grey),
+                        SizedBox(height: 6),
+                        Text(
+                          "Tap to add logo",
+                          style: TextStyle(color: Colors.grey, fontSize: 12),
+                        ),
+                      ],
+                    )
+                        : null,
                   ),
                 ),
               ),
             ),
-
 
             // ---------------- BASIC INFORMATION ----------------
             _sectionTitle("Basic Information"),
@@ -146,10 +164,62 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
                 style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFF6B00),
                     shape: const StadiumBorder()),
-                child: const Text("🔐 Change PIN",style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold),),
-                onPressed: () {},
+                child: const Text("🔐 Change PIN",
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                onPressed: () {
+                  setState(() {
+                    _showForgotPinCard = !_showForgotPinCard;
+                  });
+                },
               ),
             ),
+
+            if (_showForgotPinCard)
+              _card(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Change PIN",
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+
+                    _inputField("Current PIN", keyboardType: TextInputType.number),
+                    _inputField("New PIN", keyboardType: TextInputType.number),
+                    _inputField("Confirm New PIN", keyboardType: TextInputType.number),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF6B00),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
+                        ),
+                        onPressed: () {
+                          // Change PIN Logic Here
+                        },
+                        child: const Text(
+                          "Update PIN",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  ],
+                ),
+              ),
+
+
+
           ],
         ),
       ),

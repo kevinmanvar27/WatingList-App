@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'auth_screen.dart';
-import 'pin_login_screen.dart';
+import 'Screen/auth_screen.dart';
+import 'Screen/pin_login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   @override

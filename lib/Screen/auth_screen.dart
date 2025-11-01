@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:waiting_list/Screen/pin_login_screen.dart';
 import '../services/auth_service.dart';
 import 'pin_setup_screen.dart';
 
@@ -40,8 +41,27 @@ class _AuthScreenState extends State<AuthScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Icon
-              Icon(Icons.lock_outline, size: 100, color: Color(0xFFFF6B00)),
+              Container(
+                  padding: EdgeInsets.all(35),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 12,
+                        spreadRadius: 2,
+                        offset: Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Image.asset(
+                    'assets/Images/re.png',
+                    width: 100,
+                    height: 100,
+                    fit: BoxFit.contain,
+                  )
+              ),
 
               SizedBox(height: 20),
 
@@ -85,6 +105,13 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 onPressed: _googleSignIn,
               ),
+              SizedBox(height: 10,),
+              TextButton(
+                  onPressed: (){
+                    Navigator.push(context, MaterialPageRoute(builder: (context)=>PinLoginScreen()));
+                  },
+                  child: Text("Login With PIN",style: TextStyle(color: Color(0xFFFF6B00),fontSize: 18),),
+              )
             ],
           ),
         ),
