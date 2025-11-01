@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'Screen/Home_screen.dart';
 import 'Screen/auth_screen.dart';
-import 'Screen/pin_login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   @override
@@ -15,7 +15,7 @@ class _SplashScreenState extends State<SplashScreen> {
     final pin = sp.getString('user_pin');
     if (pin != null) {
       Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (_) => PinLoginScreen()));
+          context, MaterialPageRoute(builder: (_) => HomeScreen()));
     } else {
       Navigator.pushReplacement(
           context, MaterialPageRoute(builder: (_) => AuthScreen()));

@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:waiting_list/Screen/waiting_list_screen.dart';
+import '../Api_Model/restaurant_model.dart';
 import 'auth_screen.dart';
 import '../services/auth_service.dart';
 import 'Setting_Screen.dart';
@@ -13,6 +17,22 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+
+  Future<List<RestaurantModel>> fetchRestaurants() async {
+    final response = await http.get(
+      Uri.parse("https://waitinglist.rektech.work/api/restaurants/public"),
+    );
+
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body);
+      List data = body['data']['data'];
+      return data.map((e) => RestaurantModel.fromJson(e)).toList();
+    } else {
+      throw Exception("Failed to load restaurants");
+    }
+  }
+
+
   String selectedLocation = "Gujarat";
   int selectedIndex = 0;
 
@@ -134,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget restaurantCard() {
+  Widget restaurantCard(RestaurantModel model) {
     return Container(
       margin: EdgeInsets.only(top: 15),
       padding: EdgeInsets.all(16),
@@ -153,13 +173,14 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
 
-          /// IMAGE + OPEN BUTTON BELOW
           Column(
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  "assets/Images/app_logo.png",
+                child: Image.network(
+                  model.profile.isEmpty
+                      ? "https://via.placeholder.com/50"
+                      : "https://waitinglist.rektech.work${model.profile}",
                   height: 50,
                   width: 50,
                   fit: BoxFit.cover,
@@ -188,13 +209,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
           SizedBox(width: 15),
 
-          /// TEXT INFORMATION
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "K-win kitchen",
+                  model.name,
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 6),
@@ -205,7 +225,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        "Shivallay Complex, Rajkot, Gujarat",
+                        model.fullAddress,
                         style: TextStyle(fontSize: 13, color: Colors.black54),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -217,11 +237,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          /// WAITING + CALL (ONLY ICON BUTTONS)
           Column(
             children: [
-
-              /// WAITING (Icon + Count Container)
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
@@ -230,36 +247,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 child: Column(
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          "0",
-                          style: TextStyle(
-                            color: Colors.orange,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      model.waiting.toString(),
+                      style: TextStyle(
+                        color: Colors.orange,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
-                    Text("Waitng",style: TextStyle(fontSize: 10),)
+                    Text("Waiting", style: TextStyle(fontSize: 10)),
                   ],
                 ),
               ),
 
-
               SizedBox(height: 5),
 
-              /// CALL (Icon Only)
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.green.shade50
-                ),
-                child: IconButton(
-                  onPressed: () {},
-                  icon: Icon(Icons.call, color: Colors.green, size: 26),
-                ),
+              IconButton(
+                onPressed: () {},
+                icon: Icon(Icons.call, color: Colors.green, size: 26),
               ),
             ],
           ),
@@ -267,6 +272,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
 
 
 
@@ -372,15 +378,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
           SizedBox(height: 10),
 
-          /// RESTAURANT CARD LIST
           Expanded(
-            child: ListView(
-              children: [
-                restaurantCard(),
-                // If more restaurants, duplicate or make dynamic later
-              ],
+            child: FutureBuilder<List<RestaurantModel>>(
+              future: fetchRestaurants(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasError) {
+                  return Center(child: Text("Something went wrong"));
+                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return Center(child: Text("No restaurants found"));
+                }
+
+                final restaurants = snapshot.data!;
+
+                return ListView.builder(
+                  itemCount: restaurants.length,
+                  itemBuilder: (context, index) {
+                    return restaurantCard(restaurants[index]);
+                  },
+                );
+              },
             ),
           ),
+
         ],
       ),
     );
