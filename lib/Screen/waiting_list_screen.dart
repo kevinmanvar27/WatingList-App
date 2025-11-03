@@ -79,7 +79,7 @@ class _WaitingListScreenState extends State<WaitingListScreen> {
                       onPressed: () {
                         _showAddUserDialog(context);
                       },
-                      child: const Text("Add User",
+                      child: const Text("Add Person",
                           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
                   ],
@@ -208,7 +208,7 @@ class _WaitingListScreenState extends State<WaitingListScreen> {
 
                 Center(
                   child: Text(
-                    "Add New User",
+                    "Add New Person",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 22,
@@ -284,7 +284,7 @@ class _WaitingListScreenState extends State<WaitingListScreen> {
                         onPressed: () {
                           Navigator.pop(context);
                         },
-                        child: Text("Add User", style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold)),
+                        child: Text("Add Person", style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],

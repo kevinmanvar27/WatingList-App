@@ -135,7 +135,7 @@ class SubscriptionFeatureScreen extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Color(0xFFF9FAFB),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.grey.shade300, width: 1),
+                      border: Border.all(color: Colors.grey.shade300, width: 2),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,

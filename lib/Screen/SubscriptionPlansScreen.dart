@@ -122,9 +122,7 @@ class SubscriptionPlansScreen extends StatelessWidget {
                             ),
                             elevation: 0,
                           ),
-                          onPressed: () {
-                            // TODO: Payment Integration here
-                          },
+                          onPressed: () {},
                           child: const Text(
                             "Buy Now",
                             style: TextStyle(

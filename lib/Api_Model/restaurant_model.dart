@@ -19,13 +19,13 @@ class RestaurantModel {
 
   factory RestaurantModel.fromJson(Map<String, dynamic> json) {
     return RestaurantModel(
-      id: json['id'],
-      name: json['name'],
-      location: json['location'],
+      id: json['id'] ?? 0,
+      name: json['name'] ?? "",
+      location: json['location'] ?? "",
       fullAddress: json['full_address'] ?? "",
       contactNumber: json['contact_number'] ?? "",
-      profile: json['profile'] ?? "",
-      waiting: json['current_waiting_count'] ?? 0,
+      profile: json['profile'] ?? "", // ✅ handle null
+      waiting: json['current_waiting_count'] ?? 0, // ✅ correct key
     );
   }
 }

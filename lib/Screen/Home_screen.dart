@@ -1,8 +1,10 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:waiting_list/Screen/waiting_list_screen.dart';
 import '../Api_Model/restaurant_model.dart';
 import 'auth_screen.dart';
@@ -18,22 +20,82 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
 
+  String appName = "Waitinglist";
+  String appLogo = "";
+  String selectedLocation = "";
+  bool showAddress = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBranding();
+  }
+
+  Future<void> _getLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      await Geolocator.openLocationSettings();
+      return;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      return;
+    }
+
+    Position position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+
+    List<Placemark> placemarks =
+    await placemarkFromCoordinates(position.latitude, position.longitude);
+
+    Placemark place = placemarks[0];
+
+    String fullAddress = "${place.locality}, ${place.administrativeArea}";
+
+    setState(() {
+      selectedLocation = fullAddress;
+      showAddress = true;
+    });
+  }
+
+
+
+  Future<void> _loadBranding() async {
+    final sp = await SharedPreferences.getInstance();
+    setState(() {
+      appName = sp.getString("app_name") ?? "Waitinglist";
+      appLogo = sp.getString("app_logo") ?? "";
+    });
+  }
+
   Future<List<RestaurantModel>> fetchRestaurants() async {
     final response = await http.get(
       Uri.parse("https://waitinglist.rektech.work/api/restaurants/public"),
+      headers: {"Accept": "application/json"},
     );
 
     if (response.statusCode == 200) {
       final body = jsonDecode(response.body);
-      List data = body['data']['data'];
+
+      List data = body["data"]["data"];
       return data.map((e) => RestaurantModel.fromJson(e)).toList();
     } else {
       throw Exception("Failed to load restaurants");
     }
   }
 
-
-  String selectedLocation = "Gujarat";
   int selectedIndex = 0;
 
   @override
@@ -43,7 +105,8 @@ class _HomeScreenState extends State<HomeScreen> {
     Future<void> _signOut() async {
       await _auth.signOut();
       final sp = await SharedPreferences.getInstance();
-      await sp.remove('user_pin');
+      await sp.clear();
+
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => AuthScreen()),
@@ -51,26 +114,40 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
+
     return Scaffold(
       backgroundColor: Color(0xFFF9FAFB),
       appBar: selectedIndex == 0
-      ? AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
+          ? AppBar(
         automaticallyImplyLeading: false,
-        toolbarHeight: 70,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
         title: Row(
           children: [
             Image.asset("assets/Images/re2.png", height: 40),
-            const SizedBox(width: 100),
-            ElevatedButton.icon(
+            /*Image.network(
+              appLogo,
+              height: 80,
+              width: 80,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  Image.asset("assets/Images/re2.png", height: 40),
+            ),*/
+            const SizedBox(width: 30),
+            const Spacer(),
+            ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
-                shape: StadiumBorder(),
+                shape: const StadiumBorder(),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                minimumSize: const Size(0, 32),
                 elevation: 0,
               ),
-              icon: Icon(Icons.add, color: Colors.black,size: 20,),
-              label: Text("Add Person", style: TextStyle(color: Color(0xFFF9FAFB),fontWeight: FontWeight.bold)),
+              child: const Text(
+                "Add Person",
+                style: TextStyle(color: Colors.white, fontSize: 13),
+              ),
               onPressed: () {
                 _showAddUserDialog(context);
               },
@@ -95,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
 
       bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
@@ -106,37 +183,42 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
 
-              _NavItem(
+            Expanded(
+              child: _NavItem(
                 icon: Icons.home,
                 label: "Home",
                 bgColor: selectedIndex == 0 ? Color(0xFFFFF0E6) : Colors.white,
                 textColor: selectedIndex == 0 ? Color(0xFFFF6B00) : Colors.black,
                 onTap: () => setState(() => selectedIndex = 0),
               ),
+            ),
 
-              _NavItem(
+            Expanded(
+              child: _NavItem(
                 icon: Icons.list_alt,
                 label: "Waiting List",
                 bgColor: selectedIndex == 1 ? Color(0xFFFFF0E6) : Colors.white,
                 textColor: selectedIndex == 1 ? Color(0xFFFF6B00) : Colors.black,
                 onTap: () => setState(() => selectedIndex = 1),
               ),
+            ),
 
-              _NavItem(
+            Expanded(
+              child: _NavItem(
                 icon: Icons.settings,
                 label: "Settings",
                 bgColor: selectedIndex == 2 ? Color(0xFFFFF0E6) : Colors.white,
                 textColor: selectedIndex == 2 ? Color(0xFFFF6B00) : Colors.black,
                 onTap: () => setState(() => selectedIndex = 2),
               ),
+            ),
 
-              _NavItem(
+            Expanded(
+              child: _NavItem(
                 icon: Icons.logout,
                 label: "Logout",
                 bgColor: selectedIndex == 3 ? Color(0xFFFFF0E6) : Color(0xFFFFE3E3),
@@ -146,11 +228,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   _showLogoutDialog(context, _signOut);
                 },
               ),
+            ),
 
-            ],
-          ),
+          ],
         ),
       ),
+
     );
   }
 
@@ -173,22 +256,21 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
 
+          /// LEFT (Image + Button)
           Column(
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: Image.network(
-                  model.profile.isEmpty
-                      ? "https://via.placeholder.com/50"
+                  (model.profile.isEmpty || model.profile == null)
+                      ? "https://cdn-icons-png.flaticon.com/128/562/562678.png"
                       : "https://waitinglist.rektech.work${model.profile}",
                   height: 50,
                   width: 50,
                   fit: BoxFit.cover,
                 ),
               ),
-
               SizedBox(height: 10),
-
               SizedBox(
                 height: 25,
                 child: ElevatedButton(
@@ -209,6 +291,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
           SizedBox(width: 15),
 
+          /// MIDDLE (Expanded text)
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -216,10 +299,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   model.name,
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
                 ),
                 SizedBox(height: 6),
 
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(Icons.location_on, size: 18, color: Colors.red),
                     SizedBox(width: 4),
@@ -237,7 +322,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
+          /// RIGHT (Waiting + Call)
+          SizedBox(width: 10), // ✅ extra spacing
           Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -259,22 +347,29 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-
               SizedBox(height: 5),
-
               IconButton(
-                onPressed: () {},
+                onPressed: () async {
+                  final phone = model.contactNumber.trim();
+
+                  if (phone.isNotEmpty) {
+                    final Uri callUri = Uri(scheme: 'tel', path: phone);
+                    await launchUrl(callUri);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Contact number not available")),
+                    );
+                  }
+                },
                 icon: Icon(Icons.call, color: Colors.green, size: 26),
               ),
+
             ],
           ),
         ],
       ),
     );
   }
-
-
-
 
 
 
@@ -317,66 +412,69 @@ class _HomeScreenState extends State<HomeScreen> {
 
               SizedBox(width: 12),
 
-              PopupMenuButton<String>(
-                color: Colors.white, // dropdown background color
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 4,
-                onSelected: (value) {
-                  setState(() {
-                    selectedLocation = value;
-                  });
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: "Gujarat",
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    _getLocation();
+                  },
+                  child: Container(
+                    height: 48,
+                    padding: EdgeInsets.symmetric(horizontal: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: Colors.grey.shade400),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
                       children: [
-                        Text("Gujarat"),
+                        Expanded(
+                          child: Text(
+                            "📍 Current Location..",
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 14, color: Colors.black87),
+                          ),
+                        ),
+
                       ],
                     ),
-                  ),
-                  PopupMenuItem(
-                    value: "Maharashtra",
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text("Maharashtra"),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: "Rajasthan",
-                    child: Text("Rajasthan"),
-                  ),
-                ],
-                child: Container(
-                  height: 48,
-                  padding: EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.grey.shade400),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.location_on, color: Colors.red, size: 20),
-                      SizedBox(width: 6),
-                      Text(
-                        selectedLocation,
-                        style: TextStyle(fontSize: 14, color: Colors.black87),
-                      ),
-                    ],
                   ),
                 ),
               ),
-
             ],
           ),
 
           SizedBox(height: 10),
+
+          AnimatedSwitcher(
+            duration: Duration(milliseconds: 400),
+            transitionBuilder: (child, animation) =>
+                FadeTransition(opacity: animation, child: child),
+            child: showAddress
+                ? Container(
+              key: ValueKey(selectedLocation),
+              margin: EdgeInsets.only(bottom: 10),
+              padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.location_on, color: Colors.blue, size: 18),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      selectedLocation,
+                      style: TextStyle(fontSize: 14, color: Colors.blue.shade900),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            )
+                : SizedBox(),
+          ),
+
 
           Expanded(
             child: FutureBuilder<List<RestaurantModel>>(
@@ -429,7 +527,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 Center(
                   child: Text(
-                    "Add New User",
+                    "Add New Person",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 22,
@@ -505,7 +603,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         onPressed: () {
                           Navigator.pop(context);
                         },
-                        child: Text("Add User", style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold)),
+                        child: Text("Add Person", style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],
@@ -615,7 +713,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-
 }
 
 class _NavItem extends StatelessWidget {
@@ -635,22 +732,28 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        padding: EdgeInsets.symmetric(vertical: 6),
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(40),
+          borderRadius: BorderRadius.circular(8),
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 18, color: textColor),
-            const SizedBox(width: 5),
-            Text(label, style: TextStyle(fontSize: 14, color: textColor)),
+            Icon(icon, size: 22, color: textColor),
+            SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(fontSize: 11, color: textColor),
+            ),
           ],
         ),
       ),
     );
   }
 }
+

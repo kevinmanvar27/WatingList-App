@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:waiting_list/Screen/pin_login_screen.dart';
 import '../services/auth_service.dart';
 import 'pin_setup_screen.dart';
@@ -12,24 +13,53 @@ class _AuthScreenState extends State<AuthScreen> {
   final AuthService _auth = AuthService();
   bool _loading = false;
 
+
   Future<void> _googleSignIn() async {
     setState(() => _loading = true);
+
     try {
       final res = await _auth.signInWithGoogle();
+
       if (res != null) {
-        Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (_) => PinSetupScreen()));
+        final user = res['data']['user'];
+        final token = res['data']['token'];
+
+        String email = user['email'];
+
+        final sp = await SharedPreferences.getInstance();
+        await sp.setString('token', token);
+
+        if (!mounted) return;
+
+        if(user['has_pin'] == true) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => PinSetupScreen(email: email)),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => PinSetupScreen(email: email)),
+          );
+        }
+
       } else {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Google sign in cancelled')));
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Google sign in cancelled')),
+        );
       }
+
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Sign in failed: $e')));
+      print("signin failed:---- $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Sign-in failed: $e")),
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
