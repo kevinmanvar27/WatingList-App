@@ -1,13 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../Api_Model/restaurant_user_model.dart';
+import '../services/add_person_service.dart';
 
 class WaitingListScreen extends StatefulWidget {
   const WaitingListScreen({super.key});
 
   @override
-  State<WaitingListScreen> createState() => _WaitingListScreenState();
+  State<WaitingListScreen> createState() => WaitingListScreenState();
 }
 
-class _WaitingListScreenState extends State<WaitingListScreen> {
+class WaitingListScreenState extends State<WaitingListScreen> {
+
+  List<RestaurantUser> users = [];
+
+  void refreshUsers() {
+    loadUsers();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    loadUsers();
+  }
+
+  void loadUsers() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    print("SAVED TOKEN: ${prefs.getString("token")}");
+    users = await ApiService.fetchUsers();
+    setState(() {});
+  }
+
+
+  void callNumber(String phone) async {
+    final Uri callUri = Uri(scheme: 'tel', path: phone);
+    if (await canLaunchUrl(callUri)) {
+      await launchUrl(callUri);
+    } else {
+      print("Could not launch dialer"); 
+    }
+  }
+
+
   bool dineInChecked = false;
   @override
   Widget build(BuildContext context) {
@@ -26,17 +61,18 @@ class _WaitingListScreenState extends State<WaitingListScreen> {
             const Spacer(),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
+                backgroundColor: Color(0xFFFF6F00),
                 shape: const StadiumBorder(),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 minimumSize: const Size(0, 32),
                 elevation: 0,
               ),
               child: const Text(
-                "We are Open",
+                "Add Person",
                 style: TextStyle(color: Colors.white, fontSize: 13),
               ),
               onPressed: () {
+                _showAddUserDialog(context);
               },
             ),
           ],
@@ -70,16 +106,15 @@ class _WaitingListScreenState extends State<WaitingListScreen> {
 
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFFFF6F00),
-                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        backgroundColor: Colors.green,
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
                       ),
                       onPressed: () {
-                        _showAddUserDialog(context);
                       },
-                      child: const Text("Add Person",
+                      child: const Text("We are Open",
                           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
                   ],
@@ -88,97 +123,94 @@ class _WaitingListScreenState extends State<WaitingListScreen> {
             ),
             SizedBox(height: 30),
             // Card Table
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.grey.shade300,
-                      blurRadius: 6,
-                      offset: const Offset(0, 3))
-                ],
-              ),
-
-              child: Column(
-                children: [
-
-                  // Table Header
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-                    decoration: const BoxDecoration(
-                        color: Color(0xFFFF6F00),
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(child: Text("#", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                        Expanded(child: Text("Name", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                        Expanded(child: Text("Persons", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                        Expanded(child: Text("Dine-in", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                        Expanded(child: Text("Call", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                        Expanded(child: Text("Actions", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                      ],
-                    ),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.grey.shade300,
+                          blurRadius: 6,
+                          offset: const Offset(0, 3))
+                    ],
                   ),
-
-                  // Single User Row (Interactive)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Expanded(child: Text("1")),
-
-                        const Expanded(
-                          child: Text(
-                            "John Doe",
-                            style: TextStyle(color: Colors.orange),
-                          ),
+                
+                  child: Column(
+                    children: [
+                
+                      // Table Header
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                        decoration: const BoxDecoration(
+                            color: Color(0xFFFF6F00),
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(child: Text("#", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                            Expanded(child: Text("Name", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                            Expanded(child: Text("Persons", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                            Expanded(child: Text("Dine-in", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                            Expanded(child: Text("Call", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                            Expanded(child: Text("Actions", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                          ],
                         ),
-                        SizedBox(width: 15,),
-                        const Expanded(child: Text("5")),
-
-                        // ✅ Checkbox
-                        Expanded(
-                          child: Checkbox(
-                            value: dineInChecked,
-                            onChanged: (value) {
-                              setState(() {
-                                dineInChecked = value!;
-                              });
-                            },
-                            activeColor: Color(0xFFFF6F00),
+                      ),
+                
+                      ...users.asMap().entries.map((entry) {
+                        int index = entry.key + 1;
+                        RestaurantUser user = entry.value;
+                
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                          child: Row(
+                            children: [
+                              Expanded(child: Text(index.toString())),
+                
+                              Expanded(
+                                child: Text(
+                                  user.username,
+                                  style: TextStyle(color: Colors.orange),
+                                ),
+                              ),
+                
+                              Expanded(child: Text(user.personCount.toString())),
+                
+                              Expanded(
+                                child: Checkbox(
+                                  value: false,
+                                  onChanged: (v) {},
+                                  activeColor: Color(0xFFFF6F00),
+                                ),
+                              ),
+                
+                              Expanded(
+                                child: IconButton(
+                                  icon: Icon(Icons.call),
+                                  color: Colors.green,
+                                  onPressed: () {
+                                    callNumber(user.mobile);
+                                  },
+                                ),
+                              ),
+                
+                              Expanded(
+                                child: IconButton(
+                                  icon: Icon(Icons.delete),
+                                  color: Colors.red,
+                                  onPressed: () {},
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-
-
-                        // ✅ Call Button
-                        Expanded(
-                          child: IconButton(
-                            icon: const Icon(Icons.call),
-                            color: Colors.green,
-                            onPressed: () {
-                              // Call action
-                            },
-                          ),
-                        ),
-
-                        // ✅ Delete Button
-                        Expanded(
-                          child: IconButton(
-                            icon: const Icon(Icons.delete),
-                            color: Colors.red,
-                            onPressed: () {
-                              // Delete action
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
+                        );
+                      }).toList(),
+                
+                    ],
                   ),
-
-                ],
+                ),
               ),
             ),
           ],
@@ -233,18 +265,6 @@ class _WaitingListScreenState extends State<WaitingListScreen> {
                 ),
                 SizedBox(height: 12),
 
-                Text("Person Name *",style: TextStyle(fontWeight: FontWeight.bold),),
-                SizedBox(height: 5),
-                TextField(
-                  controller: nameCtrl,
-                  decoration: InputDecoration(
-                    hintText: "Enter person name",
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 12),
 
                 Text("Total Persons",style: TextStyle(fontWeight: FontWeight.bold),),
                 SizedBox(height: 5),
@@ -258,7 +278,20 @@ class _WaitingListScreenState extends State<WaitingListScreen> {
                     ),
                   ),
                 ),
-                SizedBox(height: 25),
+                SizedBox(height: 12),
+
+                Text("Person Name *",style: TextStyle(fontWeight: FontWeight.bold),),
+                SizedBox(height: 5),
+                TextField(
+                  controller: nameCtrl,
+                  decoration: InputDecoration(
+                    hintText: "Enter person name",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 12),
 
                 Row(
                   children: [
@@ -281,8 +314,17 @@ class _WaitingListScreenState extends State<WaitingListScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                           padding: EdgeInsets.symmetric(vertical: 14),
                         ),
-                        onPressed: () {
+                        onPressed: () async {
+                          if (nameCtrl.text.isEmpty || mobileCtrl.text.isEmpty) return;
+
+                          await ApiService.addRestaurantUser(
+                            nameCtrl.text,
+                            mobileCtrl.text,
+                            personsCtrl.text.isEmpty ? "1" : personsCtrl.text,
+                          );
+
                           Navigator.pop(context);
+                          loadUsers(); // ✅ UI Auto Refresh
                         },
                         child: Text("Add Person", style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold)),
                       ),

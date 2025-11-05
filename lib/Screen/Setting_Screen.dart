@@ -4,10 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:waiting_list/Screen/waiting_list_screen.dart';
+import '../Api_Model/restaurant_user_model.dart';
+import '../services/add_person_service.dart';
 import '../services/subscription_service.dart';
 import 'Business_profile_screen.dart';
-import 'SubscriptionPlansScreen.dart';
-import 'auth_screen.dart';
 import '../services/auth_service.dart';
 
 class Setting_Screen extends StatefulWidget {
@@ -19,7 +20,18 @@ class Setting_Screen extends StatefulWidget {
 
 class _Setting_ScreenState extends State<Setting_Screen> {
 
+  final GlobalKey<WaitingListScreenState> waitingListKey = GlobalKey<WaitingListScreenState>();
+
   late Razorpay _razorpay;
+
+  List<RestaurantUser> users = [];
+
+  void loadUsers() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    print("SAVED TOKEN: ${prefs.getString("token")}");
+    users = await ApiService.fetchUsers();
+    setState(() {});
+  }
 
   final AuthService _auth = AuthService();
   final SubscriptionService _subscriptionService = SubscriptionService();
@@ -31,6 +43,7 @@ class _Setting_ScreenState extends State<Setting_Screen> {
   void initState() {
     super.initState();
     fetchPlans();
+    loadUsers();
 
     _razorpay = Razorpay();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
@@ -217,18 +230,6 @@ class _Setting_ScreenState extends State<Setting_Screen> {
     }
   }
 
-
-  Future<void> _signOut() async {
-    await _auth.signOut();
-    final sp = await SharedPreferences.getInstance();
-    await sp.remove('user_pin');
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => AuthScreen()),
-          (route) => false,
-    );
-  }
-
   void openCheckout(int amount, String planName) {
     var options = {
       'key': 'rzp_test_Go3jN8rdNmRJ7P',
@@ -269,6 +270,7 @@ class _Setting_ScreenState extends State<Setting_Screen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
@@ -277,21 +279,20 @@ class _Setting_ScreenState extends State<Setting_Screen> {
             Image.asset("assets/Images/re2.png", height: 40),
             const SizedBox(width: 30),
             const Spacer(),
-            ElevatedButton.icon(
+            ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFFFF6B00),
+                backgroundColor: Color(0xFFFF6F00),
                 shape: const StadiumBorder(),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 minimumSize: const Size(0, 32),
                 elevation: 0,
               ),
-              icon: const Icon(Icons.logout, size: 18, color: Colors.white),
-              label: const Text(
-                "Logout",
+              child: const Text(
+                "Add Person",
                 style: TextStyle(color: Colors.white, fontSize: 13),
               ),
               onPressed: () {
-                _showLogoutDialog(context, _signOut);
+                _showAddUserDialog(context);
               },
             ),
           ],
@@ -358,7 +359,7 @@ class _Setting_ScreenState extends State<Setting_Screen> {
                       Navigator.push(context, MaterialPageRoute(builder: (context)=>Business_profile_screen()));
                     },
                     child: const Text(
-                      "Edit Profile",
+                      "Update Resturant",
                       style: TextStyle(
                         color: Color(0xFFFF6B00),
                         fontSize: 15,
@@ -539,75 +540,127 @@ class _Setting_ScreenState extends State<Setting_Screen> {
       ),
     );
   }
-}
+  void _showAddUserDialog(BuildContext context,) {
+    final TextEditingController mobileCtrl = TextEditingController();
+    final TextEditingController nameCtrl = TextEditingController();
+    final TextEditingController personsCtrl = TextEditingController();
 
-//-------------------------------------- LOGOUT DIALOG --------------------------------------//
-
-void _showLogoutDialog(BuildContext context, Function signOut) {
-  showDialog(
-    context: context,
-    barrierDismissible: true,
-    builder: (context) => Dialog(
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(color: Colors.red.shade100,shape: BoxShape.circle),
-              child: Icon(Icons.logout, size: 30, color: Colors.red),
-            ),
-
-            const SizedBox(height: 20),
-
-            Text("Confirm Logout",style: TextStyle(fontSize: 20,fontWeight: FontWeight.w600,color: Colors.black87)),
-            const SizedBox(height: 10),
-
-            Text("Are you sure you want to log out of your account?",textAlign: TextAlign.center,style: TextStyle(fontSize: 15,color: Colors.black54)),
-            const SizedBox(height: 25),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
 
-                Expanded(
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      side: BorderSide(color: Colors.grey.shade400),
-                      padding: EdgeInsets.symmetric(vertical: 14),
+                Center(
+                  child: Text(
+                    "Add New Person",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
                     ),
-                    child: Text("Cancel", style: TextStyle(color: Colors.black87, fontSize: 16)),
-                    onPressed: () => Navigator.pop(context),
                   ),
                 ),
+                SizedBox(height: 20),
 
-                SizedBox(width: 10),
-
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      padding: EdgeInsets.symmetric(vertical: 14),
+                Text("Mobile Number *",style: TextStyle(fontWeight: FontWeight.bold),),
+                SizedBox(height: 5),
+                TextField(
+                  controller: mobileCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    hintText: "Enter mobile number",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text("Logout", style: TextStyle(color: Colors.white, fontSize: 16)),
-                    onPressed: () {
-                      Navigator.pop(context);
-                      signOut();
-                    },
                   ),
                 ),
+                SizedBox(height: 12),
+
+                Text("Total Persons",style: TextStyle(fontWeight: FontWeight.bold),),
+                SizedBox(height: 5),
+                TextField(
+                  controller: personsCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    hintText: "Enter total persons (optional)",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 12),
+
+                Text("Person Name *",style: TextStyle(fontWeight: FontWeight.bold),),
+                SizedBox(height: 5),
+                TextField(
+                  controller: nameCtrl,
+                  decoration: InputDecoration(
+                    hintText: "Enter person name",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 12),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                          side: BorderSide(color: Color(0xFFFF6B00)),
+                          padding: EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                        child: Text("Cancel", style: TextStyle(color: Color(0xFFFF6B00),fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFFFF6B00),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                          padding: EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        onPressed: () async {
+                          if (nameCtrl.text.isEmpty || mobileCtrl.text.isEmpty) return;
+
+                          await ApiService.addRestaurantUser(
+                            nameCtrl.text,
+                            mobileCtrl.text,
+                            personsCtrl.text.isEmpty ? "1" : personsCtrl.text,
+                          );
+
+                          Navigator.pop(context);
+                          waitingListKey.currentState?.refreshUsers();
+                        },
+
+                        child: Text("Add Person", style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ),
+
               ],
             ),
-          ],
-        ),
-      ),
-    ),
-  );
+          ),
+        );
+      },
+    );
+  }
 }
+
+
+

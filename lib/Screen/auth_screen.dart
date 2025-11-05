@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:waiting_list/Screen/pin_login_screen.dart';
 import '../services/auth_service.dart';
+import 'Home_screen.dart';
 import 'pin_setup_screen.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -12,7 +13,6 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   final AuthService _auth = AuthService();
   bool _loading = false;
-
 
   Future<void> _googleSignIn() async {
     setState(() => _loading = true);
@@ -28,18 +28,21 @@ class _AuthScreenState extends State<AuthScreen> {
 
         final sp = await SharedPreferences.getInstance();
         await sp.setString('token', token);
+        await sp.setBool("is_logged_in", true); // ✅ SAVE LOGIN SESSION
 
         if (!mounted) return;
 
-        if(user['has_pin'] == true) {
+        if(user['has_pin'] == false) {
+          print("navigate to pinsetup screen");
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => PinSetupScreen(email: email)),
           );
         } else {
+          print("navigate to pinlogin screen");
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => PinSetupScreen(email: email)),
+            MaterialPageRoute(builder: (_) => HomeScreen()),
           );
         }
 

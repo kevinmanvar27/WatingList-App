@@ -1,9 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'Screen/Home_screen.dart';
-import 'Screen/auth_screen.dart';
+import 'Screen/pin_setup_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   @override
@@ -13,32 +12,32 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> decide() async {
-    await Future.delayed(Duration(seconds: 2));
+    await Future.delayed(Duration(seconds: 0));
 
-    /// ✅ Load App Branding API
-    try {
-      final response = await http.get(
-        Uri.parse("https://waitinglist.rektech.work/api/settings/public"),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body)["data"];
-        final sp = await SharedPreferences.getInstance();
-
-        await sp.setString("app_name", data["application_name"] ?? "");
-        await sp.setString("app_logo", "https://waitinglist.rektech.work${data["app_logo"]}");
-        await sp.setString("app_version", data["app_version"] ?? "");
-      }
-    } catch (_) {}
-
-    /// ✅ Check Login Session
     final sp = await SharedPreferences.getInstance();
-    final isLoggedIn = sp.getBool("is_logged_in") ?? false;
+    final token = sp.getString('token');
+    final email = sp.getString('user_email');
+    final pin = sp.getString('user_pin'); // ✅ PIN check
 
-    if (isLoggedIn) {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen()));
+    if (token != null && email != null) {
+      if (pin != null && pin.isNotEmpty) {
+        // ✅ PIN set che → HomeScreen ma jai
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => HomeScreen()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => PinSetupScreen(email: email)),
+        );
+      }
     } else {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => AuthScreen()));
+      // 🔄 Login screen
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => HomeScreen()),
+      );
     }
   }
 

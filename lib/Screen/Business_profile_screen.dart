@@ -1,6 +1,11 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Business_profile_screen extends StatefulWidget {
   const Business_profile_screen({super.key});
@@ -10,14 +15,51 @@ class Business_profile_screen extends StatefulWidget {
 }
 
 class _Business_profile_screenState extends State<Business_profile_screen> {
+  String city = "";
+  String state = "";
+
+  final _formKey = GlobalKey<FormState>();
+
+  bool showCurrentPin = false;
+  bool showNewPin = false;
+  bool showConfirmPin = false;
+
+  final TextEditingController ownerNameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController rNameController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController websiteController = TextEditingController();
+
+  final TextEditingController streetController = TextEditingController();
+  final TextEditingController apartmentController = TextEditingController();
+  final TextEditingController cityController = TextEditingController();
+  final TextEditingController stateController = TextEditingController();
+  final TextEditingController countryController = TextEditingController();
+  final TextEditingController postalCodeController = TextEditingController();
+
+  final TextEditingController currentPinController = TextEditingController();
+  final TextEditingController newPinController = TextEditingController();
+  final TextEditingController confirmPinController = TextEditingController();
+
   bool _showForgotPinCard = false;
+  String? token;
+  String? restaurantImageUrl;
 
   File? _image;
   final ImagePicker _picker = ImagePicker();
 
+  @override
+  void initState() {
+    super.initState();
+    loadData().then((_) {
+      if (streetController.text.isEmpty) {
+        fillAddressFromLocation();
+      }
+    });
+  }
+
   Future pickImage() async {
-    final XFile? pickedFile =
-    await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
       setState(() => _image = File(pickedFile.path));
     }
@@ -27,42 +69,38 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
-          elevation: 0,
-          title: Row(
-            children: [
-              Image.asset("assets/Images/re2.png", height: 40),
-              const SizedBox(width: 10),
-              const Spacer(),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFFFF6B00),
-                  shape: const StadiumBorder(),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  minimumSize: const Size(0, 32),
-                  elevation: 0,
-                ),
-                icon: const Icon(Icons.save, size: 18, color: Colors.white),
-                label: const Text(
-                  "Save All",
-                  style: TextStyle(color: Colors.white, fontSize: 13),
-                ),
-                onPressed: () {
-                  // Save Function Here
-                },
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
+        title: Row(
+          children: [
+            Image.asset("assets/Images/re2.png", height: 40),
+            const Spacer(),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFFFF6B00),
+                shape: const StadiumBorder(),
               ),
-            ],
-          ),
+              icon: const Icon(Icons.save, size: 18, color: Colors.white),
+              label: const Text("Save All", style: TextStyle(color: Colors.white, fontSize: 13)),
+              onPressed: () {
+                if (_formKey.currentState!.validate()) {
+                  saveRestaurant();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Please fix validation errors")),
+                  );
+                }
+              },
+            ),
+          ],
         ),
-
+      ),
 
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _card(
               child: Center(
@@ -75,23 +113,18 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
                       shape: BoxShape.circle,
                       color: Colors.grey.shade200,
                       image: _image != null
-                          ? DecorationImage(
-                        image: FileImage(_image!),
-                        fit: BoxFit.cover,
-                      )
+                          ? DecorationImage(image: FileImage(_image!), fit: BoxFit.cover)
+                          : restaurantImageUrl != null
+                          ? DecorationImage(image: NetworkImage(restaurantImageUrl!), fit: BoxFit.cover)
                           : null,
                     ),
                     child: _image == null
                         ? Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: const [
-                        Icon(Icons.camera_alt_outlined,
-                            size: 35, color: Colors.grey),
+                        Icon(Icons.camera_alt_outlined, size: 35, color: Colors.grey),
                         SizedBox(height: 6),
-                        Text(
-                          "Tap to add logo",
-                          style: TextStyle(color: Colors.grey, fontSize: 12),
-                        ),
+                        Text("Tap to add logo", style: TextStyle(color: Colors.grey, fontSize: 12)),
                       ],
                     )
                         : null,
@@ -100,179 +133,185 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
               ),
             ),
 
-            // ---------------- BASIC INFORMATION ----------------
             _sectionTitle("Basic Information"),
             _card(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _inputField("Owner Name"),
-                  _inputField("Email", keyboardType: TextInputType.emailAddress),
-                  _inputField("Restaurant Name *"),
-                  _inputField("Contact Number *", keyboardType: TextInputType.phone),
-                  _inputField("Website"),
-                ],
-              ),
-            ),
-
-// ---------------- ADDRESS INFORMATION ----------------
-            _sectionTitle("Address Information"),
-            _card(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF6B00),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      onPressed: () {},
-                      child: const Text("📍  Use Current Location",style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold),),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  _inputField("Street address"),
-                  _inputField("Apartment, suite, etc. (optional)"),
-
-                  Row(
-                    children: [
-                      Expanded(child: _inputField("City")),
-                      const SizedBox(width: 12),
-                      Expanded(child: _inputField("State")),
-                    ],
-                  ),
-
-                  Row(
-                    children: [
-                      Expanded(child: _inputField("Country")),
-                      const SizedBox(width: 12),
-                      Expanded(child: _inputField("Postal code", keyboardType: TextInputType.number)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-
-            _sectionTitle("Security"),
-            _card(
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF6B00),
-                    shape: const StadiumBorder()),
-                child: const Text("🔐 Change PIN",
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                onPressed: () {
-                  setState(() {
-                    _showForgotPinCard = !_showForgotPinCard;
-                  });
-                },
-              ),
-            ),
-
-            if (_showForgotPinCard)
-              _card(
+              child: Form(
+                key: _formKey,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      "Change PIN",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 12),
-
-                    _inputField("Current PIN", keyboardType: TextInputType.number),
-                    _inputField("New PIN", keyboardType: TextInputType.number),
-                    _inputField("Confirm New PIN", keyboardType: TextInputType.number),
-
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF6B00),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 2,
-                        ),
-                        onPressed: () {
-                          // Change PIN Logic Here
-                        },
-                        child: const Text(
-                          "Update PIN",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-
+                    _formInput("Owner Name", controller: ownerNameController, required: true),
+                    _formInput("Email", controller: emailController, email: true),
+                    _formInput("Restaurant Name *", controller: rNameController, required: true),
+                    _formInput("Contact Number *", controller: phoneController, phone: true),
+                    _formInput("Website", controller: websiteController, website: true),
                   ],
                 ),
               ),
+            ),
 
-
-
+            _sectionTitle("Address Information"),
+            _card(
+              child: Column(
+                children: [
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: Color(0xFFFF6B00)),
+                    onPressed: fillAddressFromLocation,
+                    child: Text(city.isEmpty ? "Detecting location..." : "$city, $state",
+                        style: TextStyle(color: Colors.white)),
+                  ),
+                  SizedBox(height: 14),
+                  _simpleInput("Street", streetController),
+                  _simpleInput("Apartment (optional)", apartmentController),
+                  Row(children: [
+                    Expanded(child: _simpleInput("City", cityController)),
+                    SizedBox(width: 12),
+                    Expanded(child: _simpleInput("State", stateController)),
+                  ]),
+                  Row(children: [
+                    Expanded(child: _simpleInput("Country", countryController)),
+                    SizedBox(width: 12),
+                    Expanded(child: _simpleInput("Postal code", postalCodeController)),
+                  ]),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
+  Widget _formInput(String label,
+      {required TextEditingController controller, bool required = false, bool email = false, bool phone = false, bool website = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: TextFormField(
+        controller: controller,
+        autofillHints: email ? [AutofillHints.email] : website ? [AutofillHints.url] : null,
+        validator: (value) {
+          if (required && (value == null || value.isEmpty)) return "$label is required";
+          if (email && value!.isNotEmpty && !RegExp(r"^[\w\.-]+@[\w\.-]+\.\w+$").hasMatch(value)) return "Enter valid email";
+          if (phone && value!.length < 10) return "Enter valid phone";
+          if (website && value!.isNotEmpty && !Uri.tryParse(value)!.isAbsolute) return "Enter valid URL";
+          return null;
+        },
+        decoration: _decoration(label),
+      ),
+    );
+  }
+
+  Widget _simpleInput(String label, TextEditingController controller) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: TextFormField(controller: controller, decoration: _decoration(label)),
+    );
+  }
+
+  InputDecoration _decoration(String hint) => InputDecoration(
+    hintText: hint,
+    filled: true,
+    fillColor: Colors.white,
+    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+  );
+
   Widget _sectionTitle(String text) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 10),
-    child: Text(text,
-        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+    child: Text(text, style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
   );
 
   Widget _card({required Widget child}) => Container(
     width: double.infinity,
     padding: const EdgeInsets.all(16),
-    margin: const EdgeInsets.only(bottom: 14),
+    margin: EdgeInsets.only(bottom: 14),
     decoration: BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(14),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.10),
-          blurRadius: 13,
-          offset: const Offset(0, 3),
-        ),
-      ],
+      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.10), blurRadius: 13)],
     ),
     child: child,
   );
 
+  Future<void> saveRestaurant() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString("token");
 
-  Widget _inputField(String hint, {TextInputType keyboardType = TextInputType.text}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: TextField(
-        keyboardType: keyboardType,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(color: Colors.grey),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFFFF6B00), width: 1.6),
-          ),
-        ),
-      ),
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse("https://waitinglist.rektech.work/api/restaurants/my-restaurant"),
+    );
+
+    request.headers['Authorization'] = "Bearer $token";
+
+    request.fields['owner_name'] = ownerNameController.text;
+    request.fields['email'] = emailController.text;
+    request.fields['name'] = rNameController.text;
+    request.fields['contact_number'] = phoneController.text;
+    request.fields['website'] = websiteController.text;
+    request.fields['address_line_1'] = streetController.text;
+    request.fields['address_line_2'] = apartmentController.text;
+    request.fields['city'] = cityController.text;
+    request.fields['state'] = stateController.text;
+    request.fields['country'] = countryController.text;
+    request.fields['postal_code'] = postalCodeController.text;
+
+    if (_image != null) {
+      request.files.add(await http.MultipartFile.fromPath('profile', _image!.path));
+    }
+
+    var response = await request.send();
+    var resBody = await response.stream.bytesToString();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(response.statusCode == 200 ? "✅ Saved Successfully" : "❌ Error: $resBody")),
     );
   }
 
+  Future<void> loadData() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    token = prefs.getString("token");
+
+    var response = await http.get(
+      Uri.parse("https://waitinglist.rektech.work/api/restaurants/my-restaurant"),
+      headers: {"Authorization": "Bearer $token"},
+    );
+
+    if (response.statusCode == 200) {
+      var data = json.decode(response.body)["data"];
+
+      setState(() {
+        ownerNameController.text = data["owner_name"] ?? "";
+        emailController.text = data["email"] ?? "";
+        rNameController.text = data["name"] ?? "";
+        phoneController.text = data["contact_number"] ?? "";
+        websiteController.text = data["website"] ?? "";
+
+        streetController.text = data["address_line_1"] ?? "";
+        apartmentController.text = data["address_line_2"] ?? "";
+        cityController.text = data["city"] ?? "";
+        stateController.text = data["state"] ?? "";
+        countryController.text = data["country"] ?? "";
+        postalCodeController.text = data["postal_code"] ?? "";
+
+        restaurantImageUrl = "https://waitinglist.rektech.work/storage/${data["profile"]}";
+      });
+    }
+  }
+
+  void fillAddressFromLocation() async {
+    Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    List<Placemark> placeMarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+    Placemark place = placeMarks[0];
+
+    setState(() {
+      city = place.locality ?? "";
+      state = place.administrativeArea ?? "";
+    });
+
+    streetController.text = place.street ?? "";
+    cityController.text = place.locality ?? "";
+    stateController.text = place.administrativeArea ?? "";
+    countryController.text = place.country ?? "";
+    postalCodeController.text = place.postalCode ?? "";
+  }
 }

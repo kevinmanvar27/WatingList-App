@@ -67,7 +67,6 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
           "Accept": "application/json",
         },
       );
-
       print("API Response: ${response.body}");
 
       if (response.statusCode == 200) {
@@ -76,7 +75,9 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
         await sp.setString('user_email', widget.email);
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("PIN successfully created ✅")),
+          SnackBar(
+            backgroundColor: Colors.greenAccent,
+              content: Text("Login Successfully ✅",style: TextStyle(color: Colors.black,fontWeight: FontWeight.bold),)),
         );
 
         Navigator.pushReplacement(

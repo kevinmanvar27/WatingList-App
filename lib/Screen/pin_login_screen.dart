@@ -18,7 +18,6 @@ class _PinLoginScreenState extends State<PinLoginScreen> {
   String? storedPin;
   bool _isPinHidden = true;
 
-
   @override
   void initState() {
     super.initState();
@@ -85,8 +84,6 @@ class _PinLoginScreenState extends State<PinLoginScreen> {
   }
 
 
-
-
   @override
   void dispose() {
     _emailCtrl.dispose();
@@ -133,7 +130,7 @@ class _PinLoginScreenState extends State<PinLoginScreen> {
                     fit: BoxFit.contain,
                   )),
               SizedBox(height: 20),
-        
+
               TextField(
                 controller: _emailCtrl,
                 style: TextStyle(color: Colors.black),

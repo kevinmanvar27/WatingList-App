@@ -5,8 +5,11 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:waiting_list/Screen/pin_login_screen.dart';
 import 'package:waiting_list/Screen/waiting_list_screen.dart';
 import '../Api_Model/restaurant_model.dart';
+import '../Api_Model/restaurant_user_model.dart';
+import '../services/add_person_service.dart';
 import 'auth_screen.dart';
 import '../services/auth_service.dart';
 import 'Setting_Screen.dart';
@@ -19,7 +22,17 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final GlobalKey<WaitingListScreenState> waitingListKey = GlobalKey<WaitingListScreenState>();
 
+  List<RestaurantUser> users = [];
+  void loadUsers() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    print("SAVED TOKEN: ${prefs.getString("token")}");
+    users = await ApiService.fetchUsers();
+    setState(() {});
+  }
+
+  bool isLoggedIn = false;
   String appName = "Waitinglist";
   String appLogo = "";
   String selectedLocation = "";
@@ -29,6 +42,16 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadBranding();
+    _getLocation();
+    checkLoginStatus();
+    loadUsers();
+  }
+
+  Future<void> checkLoginStatus() async {
+    final sp = await SharedPreferences.getInstance();
+    setState(() {
+      isLoggedIn = sp.getBool("is_logged_in") ?? false;
+    });
   }
 
   Future<void> _getLocation() async {
@@ -71,7 +94,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
 
-
   Future<void> _loadBranding() async {
     final sp = await SharedPreferences.getInstance();
     setState(() {
@@ -109,11 +131,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => AuthScreen()),
+        MaterialPageRoute(builder: (_) => PinLoginScreen()),
             (route) => false,
       );
     }
-
 
     return Scaffold(
       backgroundColor: Color(0xFFF9FAFB),
@@ -138,20 +159,28 @@ class _HomeScreenState extends State<HomeScreen> {
             const Spacer(),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
+                backgroundColor: Color(0xFFFF6F00),
                 shape: const StadiumBorder(),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 minimumSize: const Size(0, 32),
                 elevation: 0,
               ),
-              child: const Text(
-                "Add Person",
-                style: TextStyle(color: Colors.white, fontSize: 13),
+              child: Text(
+                isLoggedIn ? "Add Person" : "Login",
+                style: const TextStyle(color: Colors.white, fontSize: 13),
               ),
               onPressed: () {
-                _showAddUserDialog(context);
+                if (isLoggedIn) {
+                  _showAddUserDialog(context);
+                } else {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => AuthScreen()),
+                  ).then((value) => checkLoginStatus());
+                }
               },
             ),
+
           ],
         ),
       ) : null,
@@ -164,14 +193,16 @@ class _HomeScreenState extends State<HomeScreen> {
           index: selectedIndex,
           children: [
             _homeContent(),
-            WaitingListScreen(),
-            Setting_Screen(),
+            WaitingListScreen(key: waitingListKey),
+            Setting_Screen(key: waitingListKey),
             SizedBox(),
           ],
         ),
       ),
 
-      bottomNavigationBar: Container(
+
+      bottomNavigationBar: isLoggedIn
+          ? Container(
         padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -186,7 +217,6 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-
             Expanded(
               child: _NavItem(
                 icon: Icons.home,
@@ -229,10 +259,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
             ),
-
           ],
         ),
-      ),
+      )
+          : null,
+
 
     );
   }
@@ -372,8 +403,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
 
-
-
   Widget _homeContent() {
     final TextEditingController searchCtrl = TextEditingController();
 
@@ -415,7 +444,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Expanded(
                 child: InkWell(
                   onTap: () {
-                    _getLocation();
+                    //_getLocation();
                   },
                   child: Container(
                     height: 48,
@@ -429,7 +458,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            "📍 Current Location..",
+                            selectedLocation.isEmpty ? "📍 Getting location..." : selectedLocation,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(fontSize: 14, color: Colors.black87),
                           ),
@@ -552,18 +581,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 SizedBox(height: 12),
 
-                Text("Person Name *",style: TextStyle(fontWeight: FontWeight.bold),),
-                SizedBox(height: 5),
-                TextField(
-                  controller: nameCtrl,
-                  decoration: InputDecoration(
-                    hintText: "Enter person name",
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 12),
 
                 Text("Total Persons",style: TextStyle(fontWeight: FontWeight.bold),),
                 SizedBox(height: 5),
@@ -577,7 +594,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-                SizedBox(height: 25),
+                SizedBox(height: 12),
+
+                Text("Person Name *",style: TextStyle(fontWeight: FontWeight.bold),),
+                SizedBox(height: 5),
+                TextField(
+                  controller: nameCtrl,
+                  decoration: InputDecoration(
+                    hintText: "Enter person name",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 12),
 
                 Row(
                   children: [
@@ -600,8 +630,18 @@ class _HomeScreenState extends State<HomeScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                           padding: EdgeInsets.symmetric(vertical: 14),
                         ),
-                        onPressed: () {
+                        onPressed: () async {
+                          if (nameCtrl.text.isEmpty || mobileCtrl.text.isEmpty) return;
+
+                          await ApiService.addRestaurantUser(
+                            nameCtrl.text,
+                            mobileCtrl.text,
+                            personsCtrl.text.isEmpty ? "1" : personsCtrl.text,
+                          );
+
                           Navigator.pop(context);
+                          // ✅ Waiting Screen auto refresh
+                          waitingListKey.currentState?.refreshUsers();
                         },
                         child: Text("Add Person", style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold)),
                       ),
