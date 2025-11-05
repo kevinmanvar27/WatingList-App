@@ -20,10 +20,6 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
 
   final _formKey = GlobalKey<FormState>();
 
-  bool showCurrentPin = false;
-  bool showNewPin = false;
-  bool showConfirmPin = false;
-
   final TextEditingController ownerNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController rNameController = TextEditingController();
@@ -37,16 +33,12 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
   final TextEditingController countryController = TextEditingController();
   final TextEditingController postalCodeController = TextEditingController();
 
-  final TextEditingController currentPinController = TextEditingController();
-  final TextEditingController newPinController = TextEditingController();
-  final TextEditingController confirmPinController = TextEditingController();
-
-  bool _showForgotPinCard = false;
-  String? token;
-  String? restaurantImageUrl;
-
   File? _image;
   final ImagePicker _picker = ImagePicker();
+  String? restaurantImageUrl;
+  String? token;
+
+  bool _showForgotPinCard = false;
 
   @override
   void initState() {
@@ -72,15 +64,19 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
+        automaticallyImplyLeading: false,
         elevation: 0,
         title: Row(
           children: [
             Image.asset("assets/Images/re2.png", height: 40),
+            const SizedBox(width: 30),
             const Spacer(),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xFFFF6B00),
                 shape: const StadiumBorder(),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                minimumSize: const Size(0, 33),
               ),
               icon: const Icon(Icons.save, size: 18, color: Colors.white),
               label: const Text("Save All", style: TextStyle(color: Colors.white, fontSize: 13)),
@@ -101,14 +97,17 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+
+            // IMAGE
             _card(
               child: Center(
                 child: GestureDetector(
                   onTap: pickImage,
                   child: Container(
-                    width: 120,
-                    height: 120,
+                    height: 110,
+                    width: 110,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: Colors.grey.shade200,
@@ -118,7 +117,7 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
                           ? DecorationImage(image: NetworkImage(restaurantImageUrl!), fit: BoxFit.cover)
                           : null,
                     ),
-                    child: _image == null
+                    child: _image == null && restaurantImageUrl == null
                         ? Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: const [
@@ -156,8 +155,8 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(backgroundColor: Color(0xFFFF6B00)),
                     onPressed: fillAddressFromLocation,
-                    child: Text(city.isEmpty ? "Detecting location..." : "$city, $state",
-                        style: TextStyle(color: Colors.white)),
+                    child: Text(city.isEmpty ? "📍 Use Current Location" : "$city, $state",
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                   SizedBox(height: 14),
                   _simpleInput("Street", streetController),
@@ -175,6 +174,35 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
                 ],
               ),
             ),
+
+            _sectionTitle("Security"),
+            _card(
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Color(0xFFFF6B00), shape: StadiumBorder()),
+                child: Text("🔐 Change PIN", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                onPressed: () => setState(() => _showForgotPinCard = !_showForgotPinCard),
+              ),
+            ),
+
+            if (_showForgotPinCard)
+              _card(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Change PIN", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    SizedBox(height: 12),
+                    _simpleInput("Current PIN", TextEditingController()),
+                    _simpleInput("New PIN", TextEditingController()),
+                    _simpleInput("Confirm New PIN", TextEditingController()),
+                    SizedBox(height: 10),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: Color(0xFFFF6B00)),
+                      onPressed: () {},
+                      child: Text("Update PIN", style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -182,14 +210,17 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
   }
 
   Widget _formInput(String label,
-      {required TextEditingController controller, bool required = false, bool email = false, bool phone = false, bool website = false}) {
+      {required TextEditingController controller,
+        bool required = false,
+        bool email = false,
+        bool phone = false,
+        bool website = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: TextFormField(
         controller: controller,
-        autofillHints: email ? [AutofillHints.email] : website ? [AutofillHints.url] : null,
         validator: (value) {
-          if (required && (value == null || value.isEmpty)) return "$label is required";
+          if (required && value!.isEmpty) return "$label is required";
           if (email && value!.isNotEmpty && !RegExp(r"^[\w\.-]+@[\w\.-]+\.\w+$").hasMatch(value)) return "Enter valid email";
           if (phone && value!.length < 10) return "Enter valid phone";
           if (website && value!.isNotEmpty && !Uri.tryParse(value)!.isAbsolute) return "Enter valid URL";
@@ -263,7 +294,10 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
     var resBody = await response.stream.bytesToString();
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(response.statusCode == 200 ? "✅ Saved Successfully" : "❌ Error: $resBody")),
+      SnackBar(
+          content: Text(response.statusCode == 200
+              ? "✅ Saved Successfully"
+              : "❌ Error: $resBody")),
     );
   }
 

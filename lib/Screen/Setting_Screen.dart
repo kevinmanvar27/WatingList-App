@@ -51,6 +51,11 @@ class _Setting_ScreenState extends State<Setting_Screen> {
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
   }
 
+  void refreshUsers() {
+    loadUsers();
+  }
+
+
   @override
   void dispose() {
     _razorpay.clear();
@@ -644,6 +649,8 @@ class _Setting_ScreenState extends State<Setting_Screen> {
                           );
 
                           Navigator.pop(context);
+                          loadUsers();
+                          /// THIS LINE IS THE FIX ✅
                           waitingListKey.currentState?.refreshUsers();
                         },
 

@@ -47,6 +47,10 @@ class _HomeScreenState extends State<HomeScreen> {
     loadUsers();
   }
 
+  void refreshUsers() {
+    loadUsers();
+  }
+
   Future<void> checkLoginStatus() async {
     final sp = await SharedPreferences.getInstance();
     setState(() {
@@ -194,12 +198,11 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             _homeContent(),
             WaitingListScreen(key: waitingListKey),
-            Setting_Screen(key: waitingListKey),
+            Setting_Screen(),
             SizedBox(),
           ],
         ),
       ),
-
 
       bottomNavigationBar: isLoggedIn
           ? Container(
@@ -640,8 +643,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           );
 
                           Navigator.pop(context);
-                          // ✅ Waiting Screen auto refresh
-                          waitingListKey.currentState?.refreshUsers();
+                          loadUsers();
+
                         },
                         child: Text("Add Person", style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold)),
                       ),

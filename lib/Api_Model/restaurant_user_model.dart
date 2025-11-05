@@ -3,12 +3,14 @@ class RestaurantUser {
   final String username;
   final String mobile;
   final int personCount;
+  bool dineIn;
 
   RestaurantUser({
     required this.id,
     required this.username,
     required this.mobile,
     required this.personCount,
+    required this.dineIn,
   });
 
   factory RestaurantUser.fromJson(Map<String, dynamic> json) {
@@ -17,6 +19,7 @@ class RestaurantUser {
       username: json["username"],
       mobile: json["mobile_number"],
       personCount: json["total_users_count"],
+      dineIn: json['status'] == "dine_in" ? true : false,
     );
   }
 }

@@ -33,13 +33,11 @@ class _AuthScreenState extends State<AuthScreen> {
         if (!mounted) return;
 
         if(user['has_pin'] == false) {
-          print("navigate to pinsetup screen");
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => PinSetupScreen(email: email)),
           );
         } else {
-          print("navigate to pinlogin screen");
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => HomeScreen()),

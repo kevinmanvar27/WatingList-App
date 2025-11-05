@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -15,6 +17,7 @@ class WaitingListScreenState extends State<WaitingListScreen> {
 
   List<RestaurantUser> users = [];
 
+
   void refreshUsers() {
     loadUsers();
   }
@@ -29,9 +32,9 @@ class WaitingListScreenState extends State<WaitingListScreen> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     print("SAVED TOKEN: ${prefs.getString("token")}");
     users = await ApiService.fetchUsers();
+    users.sort((a, b) => a.id.compareTo(b.id));
     setState(() {});
   }
-
 
   void callNumber(String phone) async {
     final Uri callUri = Uri(scheme: 'tel', path: phone);
@@ -41,7 +44,6 @@ class WaitingListScreenState extends State<WaitingListScreen> {
       print("Could not launch dialer"); 
     }
   }
-
 
   bool dineInChecked = false;
   @override
@@ -168,24 +170,50 @@ class WaitingListScreenState extends State<WaitingListScreen> {
                           child: Row(
                             children: [
                               Expanded(child: Text(index.toString())),
-                
+
                               Expanded(
-                                child: Text(
-                                  user.username,
-                                  style: TextStyle(color: Colors.orange),
+                                child: InkWell(
+                                  onTap: () {
+                                    _showAddUserDialog(context, user: user);
+                                  },
+                                  child: Text(
+                                    user.username,
+                                    style: TextStyle(color: Colors.orange, decoration: TextDecoration.underline),
+                                  ),
                                 ),
                               ),
-                
+
+
                               Expanded(child: Text(user.personCount.toString())),
-                
+
                               Expanded(
-                                child: Checkbox(
-                                  value: false,
-                                  onChanged: (v) {},
-                                  activeColor: Color(0xFFFF6F00),
+                                child: StatefulBuilder(
+                                  builder: (context, setCheckState) {
+                                    return Checkbox(
+                                      value: user.dineIn,
+                                      onChanged: (value) async {
+                                        setCheckState(() => user.dineIn = value!);
+
+                                        if (value == true) {
+                                          // ✅ Mark dine-in after 3 seconds
+                                          Timer(Duration(seconds: 3), () async {
+                                            await ApiService.markDineIn(user.id);
+                                            loadUsers();
+                                          });
+                                        } else {
+                                          // ✅ Mark Waiting BUT do NOT delete
+                                          await ApiService.markWaiting(user.id);
+                                          loadUsers(); // just refresh list
+                                        }
+                                      },
+                                      activeColor: Color(0xFFFF6F00),
+                                    );
+                                  },
                                 ),
                               ),
-                
+
+
+
                               Expanded(
                                 child: IconButton(
                                   icon: Icon(Icons.call),
@@ -195,14 +223,27 @@ class WaitingListScreenState extends State<WaitingListScreen> {
                                   },
                                 ),
                               ),
-                
+
                               Expanded(
                                 child: IconButton(
                                   icon: Icon(Icons.delete),
                                   color: Colors.red,
-                                  onPressed: () {},
+                                  onPressed: () async {
+                                    bool deleted = await ApiService.deleteUser(user.id);
+                                    if (deleted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text("${user.username} removed from waiting list"))
+                                      );
+                                      loadUsers(); // ✅ UI refresh
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text("Failed to delete user"))
+                                      );
+                                    }
+                                  },
                                 ),
                               ),
+
                             ],
                           ),
                         );
@@ -219,10 +260,12 @@ class WaitingListScreenState extends State<WaitingListScreen> {
     );
   }
 
-  void _showAddUserDialog(BuildContext context) {
-    final TextEditingController mobileCtrl = TextEditingController();
-    final TextEditingController nameCtrl = TextEditingController();
-    final TextEditingController personsCtrl = TextEditingController();
+  void _showAddUserDialog(BuildContext context, {RestaurantUser? user}) {
+
+    final TextEditingController mobileCtrl = TextEditingController(text: user?.mobile ?? "");
+    final TextEditingController nameCtrl = TextEditingController(text: user?.username ?? "");
+    final TextEditingController personsCtrl = TextEditingController(text: user?.personCount.toString() ?? "");
+
 
     showDialog(
       context: context,
@@ -240,7 +283,7 @@ class WaitingListScreenState extends State<WaitingListScreen> {
 
                 Center(
                   child: Text(
-                    "Add New Person",
+                    user == null ? "Add New Person" : "Edit Person",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 22,
@@ -317,16 +360,31 @@ class WaitingListScreenState extends State<WaitingListScreen> {
                         onPressed: () async {
                           if (nameCtrl.text.isEmpty || mobileCtrl.text.isEmpty) return;
 
-                          await ApiService.addRestaurantUser(
-                            nameCtrl.text,
-                            mobileCtrl.text,
-                            personsCtrl.text.isEmpty ? "1" : personsCtrl.text,
-                          );
+                          if (user == null) {
+                            // ✅ Add User API
+                            await ApiService.addRestaurantUser(
+                              nameCtrl.text,
+                              mobileCtrl.text,
+                              personsCtrl.text.isEmpty ? "1" : personsCtrl.text,
+                            );
+                          } else {
+                            // ✅ Edit User API
+                            await ApiService.editUser(
+                              user.id,
+                              nameCtrl.text,
+                              mobileCtrl.text,
+                              personsCtrl.text.isEmpty ? "1" : personsCtrl.text,
+                            );
+                          }
 
                           Navigator.pop(context);
-                          loadUsers(); // ✅ UI Auto Refresh
+                          loadUsers(); // ✅ UI Refresh
                         },
-                        child: Text("Add Person", style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold)),
+                        child: Text(
+                          user == null ? "Add Person" : "Update",
+                          style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold),
+                        ),
+
                       ),
                     ),
                   ],
@@ -339,4 +397,5 @@ class WaitingListScreenState extends State<WaitingListScreen> {
       },
     );
   }
+
 }
