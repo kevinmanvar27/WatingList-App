@@ -49,6 +49,7 @@ dependencies:
   geocoding: ^4.0.0
   flutter_widget_from_html: ^0.17.1
   cloud_firestore: ^5.6.12
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:

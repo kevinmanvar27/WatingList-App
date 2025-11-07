@@ -20,7 +20,7 @@ class Setting_Screen extends StatefulWidget {
 
 class _Setting_ScreenState extends State<Setting_Screen> {
 
-  final GlobalKey<WaitingListScreenState> waitingListKey = GlobalKey<WaitingListScreenState>();
+  late final GlobalKey<WaitingListScreenState> waitingListKey;
 
   late Razorpay _razorpay;
 
@@ -39,11 +39,16 @@ class _Setting_ScreenState extends State<Setting_Screen> {
   bool _loading = true;
   bool _hasActiveSubscription = true;
 
+  String userName = "";
+  String userEmail = "";
+  String restaurantName = "No restaurant data available";
   @override
   void initState() {
     super.initState();
     fetchPlans();
     loadUsers();
+    loadProfile();
+    loadRestaurant();
 
     _razorpay = Razorpay();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
@@ -78,6 +83,26 @@ class _Setting_ScreenState extends State<Setting_Screen> {
       print("Error fetching plans: $e");
     }
   }
+
+  Future<void> loadRestaurant() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString("token");
+
+    final response = await http.get(
+      Uri.parse("https://waitinglist.rektech.work/api/restaurants/my-restaurant"),
+      headers: {"Authorization": "Bearer $token"},
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body)["data"];
+      setState(() {
+        restaurantName = (data["name"] != null && data["name"].toString().trim().isNotEmpty)
+            ? data["name"]
+            : "";
+      });
+    }
+  }
+
 
   Future<void> _showTermsDialog() async {
     showDialog(
@@ -254,6 +279,15 @@ class _Setting_ScreenState extends State<Setting_Screen> {
     }
   }
 
+  void loadProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userName = prefs.getString("user_name") ?? "No Name";
+      userEmail = prefs.getString("user_email") ?? "No Email";
+    });
+  }
+
+
   void _handlePaymentSuccess(PaymentSuccessResponse response) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text("Payment Successful ✅")),
@@ -337,25 +371,55 @@ class _Setting_ScreenState extends State<Setting_Screen> {
                       CircleAvatar(
                         radius: 26,
                         backgroundColor: Color(0xFFFF6B00),
-                        child: const Text("K", style: TextStyle(color: Colors.white, fontSize: 20)),
+                        child: Text(
+                          userName.isNotEmpty ? userName[0].toUpperCase() : "U",
+                          style: TextStyle(color: Colors.white, fontSize: 20),
+                        ),
                       ),
-                      const SizedBox(width: 16),
+                      SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Text("Kevinmanvar27",style: TextStyle(fontSize: 18,fontWeight: FontWeight.bold)),
+                          children: [
+                            Text(
+                              "${restaurantName.isEmpty ? "Add Your Restaurant Name" : restaurantName}",
+                              style: TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+
                             SizedBox(height: 6),
-                            Text("kevinmanvar27@gmail.com",style: TextStyle(fontSize: 14,color: Colors.black54)),
+
+                            // User Name
+                            Text(
+                              userName,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+
                             SizedBox(height: 6),
-                            Text("No restaurant data available",style: TextStyle(fontSize: 13,color: Colors.black45)),
+
+                            // Email (Faded color)
+                            Text(
+                              userEmail,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.black54,
+                              ),
+                            ),
                           ],
                         ),
                       ),
+
                     ],
                   ),
 
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
                   const Divider(thickness: 1, color: Color(0xFFE5E7EB)),
                   const SizedBox(height: 10),
 
@@ -545,124 +609,165 @@ class _Setting_ScreenState extends State<Setting_Screen> {
       ),
     );
   }
-  void _showAddUserDialog(BuildContext context,) {
-    final TextEditingController mobileCtrl = TextEditingController();
-    final TextEditingController nameCtrl = TextEditingController();
-    final TextEditingController personsCtrl = TextEditingController();
+  void _showAddUserDialog(BuildContext context, {RestaurantUser? user}) {
+    final _formKey = GlobalKey<FormState>();
+
+    final TextEditingController mobileCtrl =
+    TextEditingController(text: user?.mobile ?? "");
+    final TextEditingController nameCtrl =
+    TextEditingController(text: user?.username ?? "");
+    final TextEditingController personsCtrl =
+    TextEditingController(text: user?.personCount.toString() ?? "1");
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return Dialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return Dialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
 
-                Center(
-                  child: Text(
-                    "Add New Person",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ),
-                SizedBox(height: 20),
-
-                Text("Mobile Number *",style: TextStyle(fontWeight: FontWeight.bold),),
-                SizedBox(height: 5),
-                TextField(
-                  controller: mobileCtrl,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    hintText: "Enter mobile number",
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 12),
-
-                Text("Total Persons",style: TextStyle(fontWeight: FontWeight.bold),),
-                SizedBox(height: 5),
-                TextField(
-                  controller: personsCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    hintText: "Enter total persons (optional)",
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 12),
-
-                Text("Person Name *",style: TextStyle(fontWeight: FontWeight.bold),),
-                SizedBox(height: 5),
-                TextField(
-                  controller: nameCtrl,
-                  decoration: InputDecoration(
-                    hintText: "Enter person name",
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 12),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                          side: BorderSide(color: Color(0xFFFF6B00)),
-                          padding: EdgeInsets.symmetric(vertical: 14),
+                      Center(
+                        child: Text(
+                          user == null ? "Add New Person" : "Edit Person",
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
                         ),
-                        onPressed: () => Navigator.pop(context),
-                        child: Text("Cancel", style: TextStyle(color: Color(0xFFFF6B00),fontWeight: FontWeight.bold)),
                       ),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFFFF6B00),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                          padding: EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        onPressed: () async {
-                          if (nameCtrl.text.isEmpty || mobileCtrl.text.isEmpty) return;
+                      SizedBox(height: 20),
 
-                          await ApiService.addRestaurantUser(
-                            nameCtrl.text,
-                            mobileCtrl.text,
-                            personsCtrl.text.isEmpty ? "1" : personsCtrl.text,
-                          );
-
-                          Navigator.pop(context);
-                          loadUsers();
-                          /// THIS LINE IS THE FIX ✅
-                          waitingListKey.currentState?.refreshUsers();
+                      Text("Mobile Number *", style: TextStyle(fontWeight: FontWeight.bold)),
+                      SizedBox(height: 5),
+                      TextFormField(
+                        controller: mobileCtrl,
+                        keyboardType: TextInputType.phone,
+                        maxLength: 10,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return "Enter mobile number";
+                          if (!RegExp(r'^[0-9]+$').hasMatch(value)) return "Only numbers allowed";
+                          if (value.length != 10) return "Mobile must be exactly 10 digits";
+                          return null;
                         },
+                        onChanged: (value) async {
+                          if (value.length == 10) {
+                            final foundUser = await AuthService.searchUserByPhone(value.trim());
 
-                        child: Text("Add Person", style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold)),
+                            if (foundUser != null) {
+                              setStateDialog(() {
+                                nameCtrl.text = foundUser.username;
+                                personsCtrl.text = foundUser.personCount.toString();
+                              });
+                            } else {
+                              setStateDialog(() {
+                                nameCtrl.clear();
+                                personsCtrl.text = "1";
+                              });
+                            }
+                          }
+                        },
+                        decoration: InputDecoration(
+                          counterText: "",
+                          hintText: "Enter mobile number",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
 
-              ],
-            ),
-          ),
+                      SizedBox(height: 12),
+
+                      Text("Total Persons", style: TextStyle(fontWeight: FontWeight.bold)),
+                      SizedBox(height: 5),
+                      TextFormField(
+                        controller: personsCtrl,
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value!.isEmpty) return "Enter persons count";
+                          if (int.tryParse(value) == null) return "Enter valid number";
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          hintText: "Enter total persons",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                      ),
+
+                      SizedBox(height: 12),
+
+                      Text("Person Name *", style: TextStyle(fontWeight: FontWeight.bold)),
+                      SizedBox(height: 5),
+                      TextFormField(
+                        controller: nameCtrl,
+                        validator: (value) =>
+                        value == null || value.isEmpty ? "Enter person name" : null,
+                        decoration: InputDecoration(
+                          hintText: "Enter person name",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                      ),
+
+                      SizedBox(height: 20),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                                side: BorderSide(color: Color(0xFFFF6B00)),
+                                padding: EdgeInsets.symmetric(vertical: 14),
+                              ),
+                              onPressed: () => Navigator.pop(context),
+                              child: Text("Cancel", style: TextStyle(color: Color(0xFFFF6B00))),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color(0xFFFF6B00),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                                padding: EdgeInsets.symmetric(vertical: 14),
+                              ),
+                              onPressed: () async {
+                                if (_formKey.currentState!.validate()) {
+
+                                  final personCount = personsCtrl.text.isEmpty ? "1" : personsCtrl.text;
+
+                                  if (user == null) {
+                                    await ApiService.addRestaurantUser(
+                                        nameCtrl.text, mobileCtrl.text, personCount);
+                                  } else {
+                                    await ApiService.editUser(
+                                        user.id, nameCtrl.text, mobileCtrl.text, personCount);
+                                  }
+                                  Navigator.pop(context);
+                                  loadUsers();
+                                  waitingListKey.currentState?.refreshUsers();
+                                }
+                              },
+                              child: Text(
+                                user == null ? "Add Person" : "Update",
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         );
       },
     );

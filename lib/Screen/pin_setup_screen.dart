@@ -74,12 +74,6 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
         await sp.setString('user_pin', pin);
         await sp.setString('user_email', widget.email);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: Colors.greenAccent,
-              content: Text("Login Successfully ✅",style: TextStyle(color: Colors.black,fontWeight: FontWeight.bold),)),
-        );
-
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => HomeScreen()),

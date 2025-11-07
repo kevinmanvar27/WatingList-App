@@ -1,13 +1,16 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../Api_Model/restaurant_user_model.dart';
 import '../services/add_person_service.dart';
+import '../services/auth_service.dart';
+import 'package:intl/intl.dart';
+
 
 class WaitingListScreen extends StatefulWidget {
-  const WaitingListScreen({super.key});
+  final VoidCallback? onStatusChanged;
+  const WaitingListScreen({super.key, this.onStatusChanged});
 
   @override
   State<WaitingListScreen> createState() => WaitingListScreenState();
@@ -17,15 +20,24 @@ class WaitingListScreenState extends State<WaitingListScreen> {
 
   List<RestaurantUser> users = [];
 
-
   void refreshUsers() {
     loadUsers();
   }
+
+  void loadRestaurantStatus() async {
+    final data = await AuthService.fetchRestaurantDetail();
+    setState(() {
+      // Assuming data["operational_status"] is a String like "true" or "false"
+      isRestaurantOpen = data["operational_status"] == "true";
+    });
+  }
+
 
   @override
   void initState() {
     super.initState();
     loadUsers();
+    loadRestaurantStatus();
   }
 
   void loadUsers() async {
@@ -41,11 +53,14 @@ class WaitingListScreenState extends State<WaitingListScreen> {
     if (await canLaunchUrl(callUri)) {
       await launchUrl(callUri);
     } else {
-      print("Could not launch dialer"); 
+      print("Could not launch dialer");
     }
   }
 
   bool dineInChecked = false;
+  bool isRestaurantOpen = false;
+
+
   @override
   Widget build(BuildContext context) {
 
@@ -95,30 +110,63 @@ class WaitingListScreenState extends State<WaitingListScreen> {
                   children: [
                     Text("Waiting Users",
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                    Text("October 31, 2025",
-                        style: TextStyle(color: Colors.grey, fontSize: 14)),
+                    Text(
+                      DateFormat('MMMM dd, yyyy').format(DateTime.now()), // Current Date
+                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                    ),
                   ],
                 ),
 
                 Row(
                   children: [
-                    //IconButton(onPressed: (){}, icon: Icon(Icons.dark_mode,size: 30,)),
-
                     SizedBox(width: 10),
 
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
+                        backgroundColor: isRestaurantOpen ? Colors.green : Colors.red,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       ),
-                      onPressed: () {
+                      onPressed: () async {
+                        bool? newStatus = await AuthService.toggleRestaurantStatus();
+
+                        if (newStatus != null) {
+                          setState(() {
+                            isRestaurantOpen = newStatus;   // API value thi update
+                          });
+
+                          // ✅ Save status globally
+                          SharedPreferences prefs = await SharedPreferences.getInstance();
+                          prefs.setBool("restaurant_open_status", isRestaurantOpen);
+
+                          // Notify HomeScreen to refresh status
+                          if (widget.onStatusChanged != null) {
+                            widget.onStatusChanged!();
+                          }
+/*                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(isRestaurantOpen ? "Restaurant is now OPEN ✅" : "Restaurant is now CLOSED ❌"),
+                              backgroundColor: isRestaurantOpen ? Colors.green : Colors.red,
+                            ),
+                          );*/
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text("Status update failed"),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
                       },
-                      child: const Text("We are Open",
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+
+
+                      child: Text(
+                        isRestaurantOpen ? "We are Open" : "We are Closed",
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
                     ),
+
+
                   ],
                 ),
               ],
@@ -138,10 +186,10 @@ class WaitingListScreenState extends State<WaitingListScreen> {
                           offset: const Offset(0, 3))
                     ],
                   ),
-                
+
                   child: Column(
                     children: [
-                
+
                       // Table Header
                       Container(
                         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
@@ -160,11 +208,11 @@ class WaitingListScreenState extends State<WaitingListScreen> {
                           ],
                         ),
                       ),
-                
+
                       ...users.asMap().entries.map((entry) {
                         int index = entry.key + 1;
                         RestaurantUser user = entry.value;
-                
+
                         return Padding(
                           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
                           child: Row(
@@ -178,7 +226,7 @@ class WaitingListScreenState extends State<WaitingListScreen> {
                                   },
                                   child: Text(
                                     user.username,
-                                    style: TextStyle(color: Colors.orange, decoration: TextDecoration.underline),
+                                    style: TextStyle(color: Color(0xFFFF6F00),fontWeight: FontWeight.bold),
                                   ),
                                 ),
                               ),
@@ -191,23 +239,49 @@ class WaitingListScreenState extends State<WaitingListScreen> {
                                   builder: (context, setCheckState) {
                                     return Checkbox(
                                       value: user.dineIn,
-                                      onChanged: (value) async {
-                                        setCheckState(() => user.dineIn = value!);
+                                        onChanged: (value) async {
+                                          setCheckState(() => user.dineIn = value!);
 
-                                        if (value == true) {
-                                          // ✅ Mark dine-in after 3 seconds
-                                          Timer(Duration(seconds: 3), () async {
-                                            await ApiService.markDineIn(user.id);
+                                          // If user UNCHECK → Cancel pending dine-in timer
+                                          if (user.dineInTimer != null) {
+                                            user.dineInTimer!.cancel();
+                                            user.dineInTimer = null;
+                                          }
+
+                                          if (value == true) {
+                                            // START Timer
+                                            user.dineInTimer = Timer(Duration(seconds: 3), () async {
+                                              await ApiService.markDineIn(user.id);
+                                              loadUsers();
+                                            });
+
+                                            // ✅ SHOW DINE-IN MESSAGE
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                content: Text("${user.username} marked as Dine-In ✅"),
+                                                backgroundColor: Colors.green,
+                                                duration: Duration(seconds: 2),
+                                              ),
+                                            );
+
+                                          } else {
+                                            // Immediately mark waiting
+                                            await ApiService.markWaiting(user.id);
                                             loadUsers();
-                                          });
-                                        } else {
-                                          // ✅ Mark Waiting BUT do NOT delete
-                                          await ApiService.markWaiting(user.id);
-                                          loadUsers(); // just refresh list
-                                        }
-                                      },
+
+                                            // ✅ SHOW DINE-OUT MESSAGE
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                content: Text("${user.username} moved back to Waiting List ❌"),
+                                                backgroundColor: Colors.red,
+                                                duration: Duration(seconds: 2),
+                                              ),
+                                            );
+                                          }
+                                        },
                                       activeColor: Color(0xFFFF6F00),
                                     );
+
                                   },
                                 ),
                               ),
@@ -248,7 +322,7 @@ class WaitingListScreenState extends State<WaitingListScreen> {
                           ),
                         );
                       }).toList(),
-                
+
                     ],
                   ),
                 ),
@@ -261,141 +335,168 @@ class WaitingListScreenState extends State<WaitingListScreen> {
   }
 
   void _showAddUserDialog(BuildContext context, {RestaurantUser? user}) {
+    final _formKey = GlobalKey<FormState>();
 
-    final TextEditingController mobileCtrl = TextEditingController(text: user?.mobile ?? "");
-    final TextEditingController nameCtrl = TextEditingController(text: user?.username ?? "");
-    final TextEditingController personsCtrl = TextEditingController(text: user?.personCount.toString() ?? "");
-
+    final TextEditingController mobileCtrl =
+    TextEditingController(text: user?.mobile ?? "");
+    final TextEditingController nameCtrl =
+    TextEditingController(text: user?.username ?? "");
+    final TextEditingController personsCtrl =
+    TextEditingController(text: user?.personCount.toString() ?? "1");
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return Dialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return Dialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
 
-                Center(
-                  child: Text(
-                    user == null ? "Add New Person" : "Edit Person",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ),
-                SizedBox(height: 20),
-
-                Text("Mobile Number *",style: TextStyle(fontWeight: FontWeight.bold),),
-                SizedBox(height: 5),
-                TextField(
-                  controller: mobileCtrl,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    hintText: "Enter mobile number",
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 12),
-
-
-                Text("Total Persons",style: TextStyle(fontWeight: FontWeight.bold),),
-                SizedBox(height: 5),
-                TextField(
-                  controller: personsCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    hintText: "Enter total persons (optional)",
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 12),
-
-                Text("Person Name *",style: TextStyle(fontWeight: FontWeight.bold),),
-                SizedBox(height: 5),
-                TextField(
-                  controller: nameCtrl,
-                  decoration: InputDecoration(
-                    hintText: "Enter person name",
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 12),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                          side: BorderSide(color: Color(0xFFFF6B00)),
-                          padding: EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                        child: Text("Cancel", style: TextStyle(color: Color(0xFFFF6B00),fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFFFF6B00),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                          padding: EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        onPressed: () async {
-                          if (nameCtrl.text.isEmpty || mobileCtrl.text.isEmpty) return;
-
-                          if (user == null) {
-                            // ✅ Add User API
-                            await ApiService.addRestaurantUser(
-                              nameCtrl.text,
-                              mobileCtrl.text,
-                              personsCtrl.text.isEmpty ? "1" : personsCtrl.text,
-                            );
-                          } else {
-                            // ✅ Edit User API
-                            await ApiService.editUser(
-                              user.id,
-                              nameCtrl.text,
-                              mobileCtrl.text,
-                              personsCtrl.text.isEmpty ? "1" : personsCtrl.text,
-                            );
-                          }
-
-                          Navigator.pop(context);
-                          loadUsers(); // ✅ UI Refresh
-                        },
+                      Center(
                         child: Text(
-                          user == null ? "Add Person" : "Update",
-                          style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold),
+                          user == null ? "Add New Person" : "Edit Person",
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
                         ),
-
                       ),
-                    ),
-                  ],
-                ),
+                      SizedBox(height: 20),
 
-              ],
-            ),
-          ),
+                      Text("Mobile Number *", style: TextStyle(fontWeight: FontWeight.bold)),
+                      SizedBox(height: 5),
+                      TextFormField(
+                        controller: mobileCtrl,
+                        keyboardType: TextInputType.phone,
+                        maxLength: 10,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return "Enter mobile number";
+                          if (!RegExp(r'^[0-9]+$').hasMatch(value)) return "Only numbers allowed";
+                          if (value.length != 10) return "Mobile must be exactly 10 digits";
+                          return null;
+                        },
+                        onChanged: (value) async {
+                          if (value.length == 10) {
+                            final foundUser = await AuthService.searchUserByPhone(value.trim());
+
+                            if (foundUser != null) {
+                              setStateDialog(() {
+                                nameCtrl.text = foundUser.username;
+                                personsCtrl.text = foundUser.personCount.toString();
+                              });
+                            } else {
+                              setStateDialog(() {
+                                nameCtrl.clear();
+                                personsCtrl.text = "1";
+                              });
+                            }
+                          }
+                        },
+                        decoration: InputDecoration(
+                          counterText: "",
+                          hintText: "Enter mobile number",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                      ),
+
+                      SizedBox(height: 12),
+
+                      Text("Total Persons", style: TextStyle(fontWeight: FontWeight.bold)),
+                      SizedBox(height: 5),
+                      TextFormField(
+                        controller: personsCtrl,
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value!.isEmpty) return "Enter persons count";
+                          if (int.tryParse(value) == null) return "Enter valid number";
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          hintText: "Enter total persons",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                      ),
+
+                      SizedBox(height: 12),
+
+                      Text("Person Name *", style: TextStyle(fontWeight: FontWeight.bold)),
+                      SizedBox(height: 5),
+                      TextFormField(
+                        controller: nameCtrl,
+                        validator: (value) =>
+                        value == null || value.isEmpty ? "Enter person name" : null,
+                        decoration: InputDecoration(
+                          hintText: "Enter person name",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                      ),
+
+                      SizedBox(height: 20),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                                side: BorderSide(color: Color(0xFFFF6B00)),
+                                padding: EdgeInsets.symmetric(vertical: 14),
+                              ),
+                              onPressed: () => Navigator.pop(context),
+                              child: Text("Cancel", style: TextStyle(color: Color(0xFFFF6B00))),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color(0xFFFF6B00),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                                padding: EdgeInsets.symmetric(vertical: 14),
+                              ),
+                              onPressed: () async {
+                                if (_formKey.currentState!.validate()) {
+
+                                  final personCount = personsCtrl.text.isEmpty ? "1" : personsCtrl.text;
+
+                                  if (user == null) {
+                                    await ApiService.addRestaurantUser(
+                                        nameCtrl.text, mobileCtrl.text, personCount);
+                                  } else {
+                                    await ApiService.editUser(
+                                        user.id, nameCtrl.text, mobileCtrl.text, personCount);
+                                  }
+
+                                  Navigator.pop(context);
+                                  loadUsers();
+                                }
+                              },
+                              child: Text(
+                                user == null ? "Add Person" : "Update",
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         );
       },
     );
   }
+
 
 }

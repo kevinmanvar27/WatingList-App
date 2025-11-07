@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:waiting_list/Screen/pin_login_screen.dart';
 
 class Business_profile_screen extends StatefulWidget {
   const Business_profile_screen({super.key});
@@ -15,6 +16,10 @@ class Business_profile_screen extends StatefulWidget {
 }
 
 class _Business_profile_screenState extends State<Business_profile_screen> {
+
+  int selectedIndex = 2;
+  bool isLoggedIn = true;
+
   String city = "";
   String state = "";
 
@@ -33,6 +38,11 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
   final TextEditingController countryController = TextEditingController();
   final TextEditingController postalCodeController = TextEditingController();
 
+  final TextEditingController currentPin = TextEditingController();
+  final TextEditingController newPin = TextEditingController();
+  final TextEditingController confirmPin = TextEditingController();
+
+
   File? _image;
   final ImagePicker _picker = ImagePicker();
   String? restaurantImageUrl;
@@ -43,6 +53,7 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
   @override
   void initState() {
     super.initState();
+    fillAddressFromLocation();
     loadData().then((_) {
       if (streetController.text.isEmpty) {
         fillAddressFromLocation();
@@ -56,6 +67,124 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
       setState(() => _image = File(pickedFile.path));
     }
   }
+
+  Future<void> _signOut() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Logout Successfully ✅"),
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => PinLoginScreen()),
+          (route) => false,
+    );
+  }
+  void _showLogoutDialog(BuildContext context, Function signOut) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+
+              /// Icon Circle
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.logout, size: 30, color: Colors.red),
+              ),
+
+              const SizedBox(height: 20),
+
+              /// Title
+              Text(
+                "Confirm Logout",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              /// Subtitle
+              Text(
+                "Are you sure you want to log out of your account?",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.black54,
+                ),
+              ),
+
+              const SizedBox(height: 25),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+
+                  /// Cancel Button
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        side: BorderSide(color: Colors.grey.shade400),
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: Text("Cancel", style: TextStyle(color: Colors.black87, fontSize: 16)),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ),
+
+                  SizedBox(width: 10),
+
+                  /// Logout Button
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: Text("Logout", style: TextStyle(color: Colors.white, fontSize: 16)),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        signOut();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -81,14 +210,14 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
               icon: const Icon(Icons.save, size: 18, color: Colors.white),
               label: const Text("Save All", style: TextStyle(color: Colors.white, fontSize: 13)),
               onPressed: () {
+                FocusScope.of(context).unfocus();
                 if (_formKey.currentState!.validate()) {
                   saveRestaurant();
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Please fix validation errors")),
-                  );
+                  showMsg("Please fix validation errors", error: true);
                 }
               },
+
             ),
           ],
         ),
@@ -138,8 +267,8 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    _formInput("Owner Name", controller: ownerNameController, required: true),
-                    _formInput("Email", controller: emailController, email: true),
+                    _formInput("Owner Name", controller: ownerNameController, required: true, enabled: true),
+                    _formInput("Email", controller: emailController, email: true, enabled: false),
                     _formInput("Restaurant Name *", controller: rNameController, required: true),
                     _formInput("Contact Number *", controller: phoneController, phone: true),
                     _formInput("Website", controller: websiteController, website: true),
@@ -191,13 +320,18 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
                   children: [
                     Text("Change PIN", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     SizedBox(height: 12),
-                    _simpleInput("Current PIN", TextEditingController()),
-                    _simpleInput("New PIN", TextEditingController()),
-                    _simpleInput("Confirm New PIN", TextEditingController()),
+                    _simpleInput("Current PIN", currentPin),
+                    _simpleInput("New PIN", newPin),
+                    _simpleInput("Confirm New PIN", confirmPin),
                     SizedBox(height: 10),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(backgroundColor: Color(0xFFFF6B00)),
-                      onPressed: () {},
+                      onPressed: () {
+                        if (newPin.text.length != 4) return showMsg("PIN must be 4 digits", error: true);
+                        if (newPin.text != confirmPin.text) return showMsg("PINs do not match", error: true);
+                        showMsg("PIN Updated Successfully");
+                      },
+
                       child: Text("Update PIN", style: TextStyle(color: Colors.white)),
                     ),
                   ],
@@ -206,6 +340,75 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
           ],
         ),
       ),
+      bottomNavigationBar: isLoggedIn
+          ? Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 4,
+              offset: Offset(0, -2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            Expanded(
+              child: _NavItem(
+                icon: Icons.home,
+                label: "Home",
+                bgColor: selectedIndex == 0 ? Color(0xFFFFF0E6) : Colors.white,
+                textColor: selectedIndex == 0 ? Color(0xFFFF6B00) : Colors.black,
+                onTap: () {
+                  setState(() => selectedIndex = 0);
+                  Navigator.pushReplacementNamed(context, "/home");
+                },
+              ),
+            ),
+
+            Expanded(
+              child: _NavItem(
+                icon: Icons.list_alt,
+                label: "Waiting List",
+                bgColor: selectedIndex == 1 ? Color(0xFFFFF0E6) : Colors.white,
+                textColor: selectedIndex == 1 ? Color(0xFFFF6B00) : Colors.black,
+                onTap: () {
+                  setState(() => selectedIndex = 1);
+                  Navigator.pushReplacementNamed(context, "/waiting");
+                },
+              ),
+            ),
+
+
+            Expanded(
+              child: _NavItem(
+                icon: Icons.settings,
+                label: "Settings",
+                bgColor: selectedIndex == 2 ? Color(0xFFFFF0E6) : Colors.white,
+                textColor: selectedIndex == 2 ? Color(0xFFFF6B00) : Colors.black,
+                onTap: () => setState(() => selectedIndex = 2),
+              ),
+            ),
+
+            Expanded(
+              child: _NavItem(
+                icon: Icons.logout,
+                label: "Logout",
+                bgColor: selectedIndex == 3 ? Color(0xFFFFF0E6) : Color(0xFFFFE3E3),
+                textColor: Color(0xFFD9534F),
+                onTap: () {
+                  setState(() => selectedIndex = 3);
+                  _showLogoutDialog(context, _signOut);
+                },
+              ),
+            ),
+          ],
+        ),
+      )
+          : null,
     );
   }
 
@@ -214,22 +417,44 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
         bool required = false,
         bool email = false,
         bool phone = false,
-        bool website = false}) {
+        bool website = false,
+        bool enabled = true}) {  // ✅ NEW PARAM
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: TextFormField(
         controller: controller,
+        enabled: enabled, // ✅ This disables the field
         validator: (value) {
-          if (required && value!.isEmpty) return "$label is required";
-          if (email && value!.isNotEmpty && !RegExp(r"^[\w\.-]+@[\w\.-]+\.\w+$").hasMatch(value)) return "Enter valid email";
-          if (phone && value!.length < 10) return "Enter valid phone";
-          if (website && value!.isNotEmpty && !Uri.tryParse(value)!.isAbsolute) return "Enter valid URL";
+          value = value?.trim() ?? "";
+
+          if (required && value.isEmpty) return "$label is required";
+
+          if (phone && value.isNotEmpty) {
+            if (!RegExp(r'^[0-9]+$').hasMatch(value)) return "Numbers only allowed";
+            if (value.length != 10) return "Phone must be 10 digits";
+          }
+
+          if (email && value.isNotEmpty && !RegExp(r"^[\w\.-]+@[\w\.-]+\.\w+$").hasMatch(value)) {
+            return "Enter valid email";
+          }
+
+          if (website && value.isNotEmpty && !Uri.tryParse(value)!.isAbsolute == true) {
+            return "Enter valid website";
+          }
+
           return null;
         },
-        decoration: _decoration(label),
+
+        decoration: _decoration(label).copyWith(
+          filled: true,
+          fillColor: enabled ? Colors.white : Colors.grey.shade200,
+        ),
       ),
     );
   }
+
+
 
   Widget _simpleInput(String label, TextEditingController controller) {
     return Padding(
@@ -263,6 +488,19 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
     child: child,
   );
 
+  void showMsg(String msg, {bool error = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: TextStyle(color: Colors.white, fontSize: 15)),
+        backgroundColor: error ? Colors.red : Colors.green,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
   Future<void> saveRestaurant() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString("token");
@@ -293,17 +531,20 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
     var response = await request.send();
     var resBody = await response.stream.bytesToString();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-          content: Text(response.statusCode == 200
-              ? "✅ Saved Successfully"
-              : "❌ Error: $resBody")),
-    );
+    if (response.statusCode == 200) {
+      showMsg("✅ Saved Successfully");
+    } else {
+      showMsg("❌ Error: $resBody", error: true);
+    }
   }
 
   Future<void> loadData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     token = prefs.getString("token");
+
+    // ✅ Email always from logged-in user stored locally
+    String spEmail = prefs.getString("user_email") ?? "";
+    emailController.text = spEmail;
 
     var response = await http.get(
       Uri.parse("https://waitinglist.rektech.work/api/restaurants/my-restaurant"),
@@ -314,19 +555,15 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
       var data = json.decode(response.body)["data"];
 
       setState(() {
-        ownerNameController.text = data["owner_name"] ?? "";
-        emailController.text = data["email"] ?? "";
+        ownerNameController.text = data["owner_name"] ?? ""; // ✅ API thi owner name
         rNameController.text = data["name"] ?? "";
         phoneController.text = data["contact_number"] ?? "";
         websiteController.text = data["website"] ?? "";
-
         streetController.text = data["address_line_1"] ?? "";
-        apartmentController.text = data["address_line_2"] ?? "";
         cityController.text = data["city"] ?? "";
         stateController.text = data["state"] ?? "";
         countryController.text = data["country"] ?? "";
         postalCodeController.text = data["postal_code"] ?? "";
-
         restaurantImageUrl = "https://waitinglist.rektech.work/storage/${data["profile"]}";
       });
     }
@@ -342,10 +579,61 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
       state = place.administrativeArea ?? "";
     });
 
-    streetController.text = place.street ?? "";
+    // ✅ Auto-fill Apartment (optional) with Street name from location
+    apartmentController.text = place.street ?? "";
+
+    // ✅ Keep Street Empty (User will type manually)
+    streetController.text = "";
+
     cityController.text = place.locality ?? "";
     stateController.text = place.administrativeArea ?? "";
     countryController.text = place.country ?? "";
     postalCodeController.text = place.postalCode ?? "";
+  }
+
+}
+
+
+
+
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color bgColor;
+  final Color textColor;
+  final VoidCallback onTap;
+
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    required this.bgColor,
+    required this.textColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 6),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 22, color: textColor),
+            SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(fontSize: 11, color: textColor),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
