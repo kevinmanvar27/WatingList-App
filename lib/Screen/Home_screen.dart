@@ -198,15 +198,78 @@ class _HomeScreenState extends State<HomeScreen> {
                 isLoggedIn ? "Add Person" : "Login",
                 style: const TextStyle(color: Colors.white, fontSize: 13),
               ),
-              onPressed: () {
-                if (isLoggedIn) {
-                  _showAddUserDialog(context);
-                } else {
+              onPressed: () async {
+                if (!isLoggedIn) {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => AuthScreen()),
                   ).then((value) => checkLoginStatus());
+                  return;
                 }
+
+                if (!isRestaurantOpen) {
+                  bool? proceed = await showDialog(
+                    context: context,
+                    builder: (context) => Dialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.info_outline, size: 26, color: Color(0xFFFF6F00)),
+                                SizedBox(width: 10),
+                                Text(
+                                  "Restaurant Closed",
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 15),
+                            Text(
+                              "Your restaurant is currently closed.\nDo you still want to add a person?",
+                              style: TextStyle(fontSize: 16, height: 1.4),
+                            ),
+                            SizedBox(height: 25),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, false),
+                                  child: Text("Cancel", style: TextStyle(color: Colors.black87)),
+                                ),
+                                SizedBox(width: 6),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Color(0xFFFF6F00),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  onPressed: () => Navigator.pop(context, true),
+                                  child: Text("Continue", style: TextStyle(color: Colors.white)),
+                                ),
+                              ],
+                            )
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+
+                  if (proceed != true) return; // Cancel kare → kuch nahi
+                }
+
+                // Restaurant open hoy ke user OK kare → Add Dialog open
+                _showAddUserDialog(context);
               },
             ),
 
@@ -528,6 +591,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 final restaurants = snapshot.data!;
 
+                // 🔥 FILTER: Closed + Waiting = 0 => HIDE card
+                restaurants.removeWhere((r) => r.waiting == 0 && isRestaurantOpen == false);
+
+                if (restaurants.isEmpty) {
+                  return Center(child: Text("No restaurants found"));
+                }
+
                 return ListView.builder(
                   itemCount: restaurants.length,
                   itemBuilder: (context, index) {
@@ -537,6 +607,7 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
           ),
+
 
         ],
       ),
@@ -848,4 +919,3 @@ class _NavItem extends StatelessWidget {
     );
   }
 }
-

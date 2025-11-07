@@ -87,9 +87,84 @@ class WaitingListScreenState extends State<WaitingListScreen> {
                 "Add Person",
                 style: TextStyle(color: Colors.white, fontSize: 13),
               ),
-              onPressed: () {
+              onPressed: () async {
+                if (!isRestaurantOpen) {
+                  bool? proceed = await showDialog(
+                    context: context,
+                    builder: (context) => Dialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.info_outline, size: 26, color: Color(0xFFFF6F00)),
+                                SizedBox(width: 10),
+                                Text(
+                                  "Restaurant Closed",
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 15),
+                            Text(
+                              "Your restaurant is currently closed.\nDo you still want to add a person?",
+                              style: TextStyle(fontSize: 16, height: 1.4),
+                            ),
+                            SizedBox(height: 25),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                TextButton(
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                  ),
+                                  onPressed: () => Navigator.pop(context, false),
+                                  child: Text(
+                                    "Cancel",
+                                    style: TextStyle(fontSize: 15, color: Colors.black87),
+                                  ),
+                                ),
+                                SizedBox(width: 6),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    elevation: 0,
+                                    backgroundColor: Color(0xFFFF6F00),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                                  ),
+                                  onPressed: () => Navigator.pop(context, true),
+                                  child: Text(
+                                    "Continue",
+                                    style: TextStyle(fontSize: 15, color: Colors.white),
+                                  ),
+                                ),
+                              ],
+                            )
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+
+                  if (proceed != true) return; // user cancel kare → kuch nahi
+                }
+
+                // Restaurant open hoy ke user OK kare → Add Dialog open
                 _showAddUserDialog(context);
               },
+
+
             ),
           ],
         ),
@@ -238,46 +313,46 @@ class WaitingListScreenState extends State<WaitingListScreen> {
                                   builder: (context, setCheckState) {
                                     return Checkbox(
                                       value: user.dineIn,
-                                        onChanged: (value) async {
-                                          setCheckState(() => user.dineIn = value!);
+                                      onChanged: (value) async {
+                                        setCheckState(() => user.dineIn = value!);
 
-                                          // If user UNCHECK → Cancel pending dine-in timer
-                                          if (user.dineInTimer != null) {
-                                            user.dineInTimer!.cancel();
-                                            user.dineInTimer = null;
-                                          }
+                                        // If user UNCHECK → Cancel pending dine-in timer
+                                        if (user.dineInTimer != null) {
+                                          user.dineInTimer!.cancel();
+                                          user.dineInTimer = null;
+                                        }
 
-                                          if (value == true) {
-                                            // START Timer
-                                            user.dineInTimer = Timer(Duration(seconds: 3), () async {
-                                              await ApiService.markDineIn(user.id);
-                                              loadUsers();
-                                            });
-
-                                            // ✅ SHOW DINE-IN MESSAGE
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(
-                                                content: Text("${user.username} marked as Dine-In ✅"),
-                                                backgroundColor: Colors.green,
-                                                duration: Duration(seconds: 2),
-                                              ),
-                                            );
-
-                                          } else {
-                                            // Immediately mark waiting
-                                            await ApiService.markWaiting(user.id);
+                                        if (value == true) {
+                                          // START Timer
+                                          user.dineInTimer = Timer(Duration(seconds: 3), () async {
+                                            await ApiService.markDineIn(user.id);
                                             loadUsers();
+                                          });
 
-                                            // ✅ SHOW DINE-OUT MESSAGE
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(
-                                                content: Text("${user.username} moved back to Waiting List ❌"),
-                                                backgroundColor: Colors.red,
-                                                duration: Duration(seconds: 2),
-                                              ),
-                                            );
-                                          }
-                                        },
+                                          // ✅ SHOW DINE-IN MESSAGE
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text("${user.username} marked as Dine-In ✅"),
+                                              backgroundColor: Colors.green,
+                                              duration: Duration(seconds: 2),
+                                            ),
+                                          );
+
+                                        } else {
+                                          // Immediately mark waiting
+                                          await ApiService.markWaiting(user.id);
+                                          loadUsers();
+
+                                          // ✅ SHOW DINE-OUT MESSAGE
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text("${user.username} moved back to Waiting List ❌"),
+                                              backgroundColor: Colors.red,
+                                              duration: Duration(seconds: 2),
+                                            ),
+                                          );
+                                        }
+                                      },
                                       activeColor: Color(0xFFFF6F00),
                                     );
 
@@ -496,6 +571,4 @@ class WaitingListScreenState extends State<WaitingListScreen> {
       },
     );
   }
-
-
 }

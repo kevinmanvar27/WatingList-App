@@ -3,7 +3,6 @@ import 'package:http/http.dart' as http;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../Api_Model/restaurant_user_model.dart';
 
 class AuthService {
@@ -45,6 +44,7 @@ class AuthService {
         await prefs.setString("token", token ?? "");
 
         print("✅ Saved User:");
+        print("Access Token:- $accessToken");
         print("Name: ${user["name"]}");
         print("Email: ${user["email"]}");
         print("Token: $token");
@@ -113,7 +113,7 @@ class AuthService {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return data["data"]["operational_status"]; // <--- New Status Return
+      return data["data"]["operational_status"];
     } else {
       return null;
     }
@@ -133,9 +133,11 @@ class AuthService {
       },
     );
     final data = jsonDecode(response.body);
+    final profilePath = data["data"]["profile"];
+    final profileUrl = "https://waitinglist.rektech.work/storage/$profilePath";
+    print('profile image:-$profileUrl');
     return data["data"];
   }
-
 
 
   Future<void> signOut() async {

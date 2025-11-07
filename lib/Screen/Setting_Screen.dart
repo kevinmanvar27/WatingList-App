@@ -39,6 +39,7 @@ class _Setting_ScreenState extends State<Setting_Screen> {
 
   String userName = "";
   String userEmail = "";
+  String profileImage = "";
   String restaurantName = "No restaurant data available";
   @override
   void initState() {
@@ -93,11 +94,20 @@ class _Setting_ScreenState extends State<Setting_Screen> {
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body)["data"];
+
+      // ✅ Convert profile to full URL
+      final imagePath = data["profile"];
+      final fullUrl = imagePath != null && imagePath.toString().trim().isNotEmpty
+          ? "https://waitinglist.rektech.work/storage/$imagePath"
+          : "";
+
       setState(() {
-        restaurantName = (data["name"] != null && data["name"].toString().trim().isNotEmpty)
-            ? data["name"]
-            : "";
+        restaurantName = data["name"] ?? "";
+        profileImage = fullUrl;          // ✅ Store it in state
       });
+
+      // ✅ Save locally (optional, useful after app restart)
+      prefs.setString("profile_image", fullUrl);
     }
   }
 
@@ -282,8 +292,10 @@ class _Setting_ScreenState extends State<Setting_Screen> {
     setState(() {
       userName = prefs.getString("user_name") ?? "No Name";
       userEmail = prefs.getString("user_email") ?? "No Email";
+      profileImage = prefs.getString("profile_image") ?? "";
     });
   }
+
 
 
   void _handlePaymentSuccess(PaymentSuccessResponse response) {
@@ -341,7 +353,6 @@ class _Setting_ScreenState extends State<Setting_Screen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             const Text("Profile",
               style: TextStyle(fontSize: 16,fontWeight: FontWeight.w600,color: Colors.black87),
             ),
@@ -368,19 +379,20 @@ class _Setting_ScreenState extends State<Setting_Screen> {
                     children: [
                       CircleAvatar(
                         radius: 26,
-                        backgroundColor: Color(0xFFFF6B00),
-                        child: Text(
-                          userName.isNotEmpty ? userName[0].toUpperCase() : "U",
-                          style: TextStyle(color: Colors.white, fontSize: 20),
-                        ),
+                        backgroundColor: Colors.grey.shade200,
+                        backgroundImage: profileImage.isNotEmpty ? NetworkImage(profileImage) : null,
+                        child: profileImage.isEmpty
+                            ? Icon(Icons.store, color: Color(0xFFFF6B00), size: 28)
+                            : null,
                       ),
+
                       SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              "${restaurantName.isEmpty ? "Add Your Restaurant Name" : restaurantName}",
+                              "${restaurantName.isEmpty ? "No resturant data avialable" : restaurantName}",
                               style: TextStyle(
                                 fontSize: 19,
                                 fontWeight: FontWeight.bold,
