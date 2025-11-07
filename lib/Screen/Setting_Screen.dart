@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:waiting_list/Screen/waiting_list_screen.dart';
 import '../Api_Model/restaurant_user_model.dart';
 import '../services/add_person_service.dart';
 import '../services/subscription_service.dart';
@@ -12,15 +11,14 @@ import 'Business_profile_screen.dart';
 import '../services/auth_service.dart';
 
 class Setting_Screen extends StatefulWidget {
-  const Setting_Screen({super.key});
+  final VoidCallback onRefreshWaitingList;
+  const Setting_Screen({super.key, required this.onRefreshWaitingList});
 
   @override
   State<Setting_Screen> createState() => _Setting_ScreenState();
 }
 
 class _Setting_ScreenState extends State<Setting_Screen> {
-
-  late final GlobalKey<WaitingListScreenState> waitingListKey;
 
   late Razorpay _razorpay;
 
@@ -751,7 +749,7 @@ class _Setting_ScreenState extends State<Setting_Screen> {
                                   }
                                   Navigator.pop(context);
                                   loadUsers();
-                                  waitingListKey.currentState?.refreshUsers();
+                                  widget.onRefreshWaitingList();
                                 }
                               },
                               child: Text(

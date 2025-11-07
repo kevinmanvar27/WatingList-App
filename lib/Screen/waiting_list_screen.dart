@@ -7,7 +7,6 @@ import '../services/add_person_service.dart';
 import '../services/auth_service.dart';
 import 'package:intl/intl.dart';
 
-
 class WaitingListScreen extends StatefulWidget {
   final VoidCallback? onStatusChanged;
   const WaitingListScreen({super.key, this.onStatusChanged});

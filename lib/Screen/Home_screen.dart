@@ -222,8 +222,13 @@ class _HomeScreenState extends State<HomeScreen> {
           index: selectedIndex,
           children: [
             _homeContent(),
-            WaitingListScreen(key: waitingListKey),
-            Setting_Screen(),
+            WaitingListScreen(
+              key: waitingListKey,
+              onStatusChanged: refreshRestaurantStatus,
+            ),
+            Setting_Screen(onRefreshWaitingList: () {
+              waitingListKey.currentState?.refreshUsers();
+            },),
             SizedBox(),
           ],
         ),
