@@ -31,8 +31,6 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
   Map<String, dynamic>? subscriptionStatus;////
   List userTransactions = [];
 
-
-
   final TextEditingController ownerNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController rNameController = TextEditingController();
@@ -321,7 +319,12 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
                 label: "Settings",
                 bgColor: selectedIndex == 2 ? Color(0xFFFFF0E6) : Colors.white,
                 textColor: selectedIndex == 2 ? Color(0xFFFF6B00) : Colors.black,
-                onTap: () => setState(() => selectedIndex = 2),
+                onTap: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => HomeScreen(initialIndex: 2)),
+                  );
+                },
               ),
             ),
             Expanded(

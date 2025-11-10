@@ -614,9 +614,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 final restaurants = snapshot.data!;
 
-                // 🔥 FILTER: Closed + Waiting = 0 => HIDE card
-                restaurants.removeWhere((r) => r.waiting == 0 && isRestaurantOpen == false);
-
                 if (restaurants.isEmpty) {
                   return Center(child: Text("No restaurants found"));
                 }
