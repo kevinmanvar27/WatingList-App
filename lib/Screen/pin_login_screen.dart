@@ -66,6 +66,18 @@ class _PinLoginScreenState extends State<PinLoginScreen> {
         await sp.setBool("is_logged_in", true);
         await sp.setString("user_email", email);
         await sp.setString("user_pin", pin);
+        
+        // ✅ Save token and user data from API response
+        if (data['data'] != null) {
+          final user = data['data']['user'];
+          final token = data['data']['token'];
+          
+          await sp.setString("token", token ?? "");
+          await sp.setString("user_name", user["name"] ?? "");
+          
+          print("✅ PIN Login - Token Saved: $token");
+          print("✅ PIN Login - User Name: ${user["name"]}");
+        }
 
         Navigator.pushReplacement(
           context,

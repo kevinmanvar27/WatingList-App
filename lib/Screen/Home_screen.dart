@@ -15,7 +15,8 @@ import '../services/auth_service.dart';
 import 'Setting_Screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final int initialIndex;
+  const HomeScreen({super.key, this.initialIndex = 0});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -44,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    selectedIndex = widget.initialIndex;
     _loadBranding();
     _loadRestaurantStatus();
     _getLocation();
@@ -121,7 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<List<RestaurantModel>> fetchRestaurants({String search = ""}) async {
+  Future<List<RestaurantModel>> fetchRestaurants({String search = "", String location = ""}) async {
     final response = await http.get(
       Uri.parse("https://waitinglist.rektech.work/api/restaurants/public?search=$search"),
       headers: {"Accept": "application/json"},
@@ -130,7 +132,22 @@ class _HomeScreenState extends State<HomeScreen> {
     if (response.statusCode == 200) {
       final body = jsonDecode(response.body);
       List data = body["data"]["data"];
-      return data.map((e) => RestaurantModel.fromJson(e)).toList();
+      List<RestaurantModel> restaurants = data.map((e) => RestaurantModel.fromJson(e)).toList();
+      
+      // ✅ Filter by location if selected
+      if (location.isNotEmpty) {
+        restaurants = restaurants.where((restaurant) {
+          // Check if restaurant location contains selected city/state
+          final restaurantLocation = restaurant.location.toLowerCase();
+          final restaurantAddress = restaurant.fullAddress.toLowerCase();
+          final selectedLoc = location.toLowerCase();
+          
+          return restaurantLocation.contains(selectedLoc) || 
+                 restaurantAddress.contains(selectedLoc);
+        }).toList();
+      }
+      
+      return restaurants;
     } else {
       throw Exception("Failed to load restaurants");
     }
@@ -289,9 +306,12 @@ class _HomeScreenState extends State<HomeScreen> {
               key: waitingListKey,
               onStatusChanged: refreshRestaurantStatus,
             ),
-            Setting_Screen(onRefreshWaitingList: () {
-              waitingListKey.currentState?.refreshUsers();
-            },),
+            Setting_Screen(
+              isVisible: selectedIndex == 2, // ✅ Pass visibility state
+              onRefreshWaitingList: () {
+                waitingListKey.currentState?.refreshUsers();
+              },
+            ),
             SizedBox(),
           ],
         ),
@@ -579,7 +599,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
           Expanded(
             child: FutureBuilder<List<RestaurantModel>>(
-              future: fetchRestaurants(search: searchCtrl.text.trim()),
+              future: fetchRestaurants(
+                search: searchCtrl.text.trim(),
+                location: selectedLocation, // ✅ Pass selected location for filtering
+              ),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(child: CircularProgressIndicator());

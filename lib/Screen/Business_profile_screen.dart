@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:waiting_list/Screen/pin_login_screen.dart';
-import 'package:waiting_list/Screen/waiting_list_screen.dart';
+import 'package:waiting_list/services/auth_service.dart';
 import 'Home_screen.dart';
 
 class Business_profile_screen extends StatefulWidget {
@@ -25,6 +25,11 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
   String state = "";
 
   final _formKey = GlobalKey<FormState>();
+  List subscriptions = [];////
+  Map<String, dynamic>? subscriptionStatus;////
+  List userTransactions = [];
+
+
 
   final TextEditingController ownerNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -54,9 +59,27 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
   @override
   void initState() {
     super.initState();
-    loadData().then((_) {
-      fillAddressFromLocation(forceUpdate: true);
+    loadData(); // ✅ Don't auto override after loading saved data
+
+
+    AuthService().fetchSubscriptions().then((data) {///
+      setState(() {
+        subscriptions = data;
+      });
     });
+
+    AuthService.fetchSubscriptionStatus().then((data) {///
+      setState(() {
+        subscriptionStatus = data;
+      });
+    });
+
+    AuthService.fetchUserTransactions().then((data) {///
+      setState(() {
+        userTransactions = data;
+      });
+    });
+
   }
 
 
@@ -184,7 +207,6 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
   }
 
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -222,14 +244,7 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
       ),
 
       /// ✅ Screen content here
-      body: IndexedStack(
-        index: selectedIndex,
-        children: [
-          HomeScreen(),
-          WaitingListScreen(),
-          businessProfileContent(),
-        ],
-      ),
+      body: businessProfileContent(),
 
       /// ✅ Always show bottom navigation
       bottomNavigationBar: Container(
@@ -253,7 +268,12 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
                 label: "Home",
                 bgColor: selectedIndex == 0 ? Color(0xFFFFF0E6) : Colors.white,
                 textColor: selectedIndex == 0 ? Color(0xFFFF6B00) : Colors.black,
-                onTap: () => setState(() => selectedIndex = 0),
+                onTap: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => HomeScreen(initialIndex: 0)),
+                  );
+                },
               ),
             ),
             Expanded(
@@ -262,7 +282,12 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
                 label: "Waiting List",
                 bgColor: selectedIndex == 1 ? Color(0xFFFFF0E6) : Colors.white,
                 textColor: selectedIndex == 1 ? Color(0xFFFF6B00) : Colors.black,
-                onTap: () => setState(() => selectedIndex = 1),
+                onTap: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => HomeScreen(initialIndex: 1)),
+                  );
+                },
               ),
             ),
             Expanded(
@@ -448,40 +473,47 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
   }
 
   void fillAddressFromLocation({bool forceUpdate = false}) async {
-    Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-    List<Placemark> placeMarks = await placemarkFromCoordinates(position.latitude, position.longitude);
-    Placemark place = placeMarks[0];
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
 
-    setState(() {
-      city = place.locality ?? "";
-      state = place.administrativeArea ?? "";
-    });
+      List<Placemark> placeMarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+      Placemark place = placeMarks[0];
 
-    // ✅ Only fill if user has not manually entered values
-    if (cityController.text.trim().isEmpty) {
-      cityController.text = place.locality ?? "";
-    }
+      setState(() {
+        // ✅ Always update street
+        streetController.text = place.street ?? "";
 
-    if (stateController.text.trim().isEmpty) {
-      stateController.text = place.administrativeArea ?? "";
-    }
+        // ❗ DO NOT TOUCH APARTMENT — keep user value safe
 
-    if (countryController.text.trim().isEmpty) {
-      countryController.text = place.country ?? "";
-    }
+        // ✅ Update others only when empty or forced
+        if (forceUpdate || cityController.text.isEmpty) {
+          cityController.text = place.locality ?? "";
+        }
+        if (forceUpdate || stateController.text.isEmpty) {
+          stateController.text = place.administrativeArea ?? "";
+        }
+        if (forceUpdate || countryController.text.isEmpty) {
+          countryController.text = place.country ?? "";
+        }
+        if (forceUpdate || postalCodeController.text.isEmpty) {
+          postalCodeController.text = place.postalCode ?? "";
+        }
+      });
 
-    if (postalCodeController.text.trim().isEmpty) {
-      postalCodeController.text = place.postalCode ?? "";
-    }
-
-    // ✅ Apartment auto-fill correctly
-    apartmentController.text = place.street ?? "";
-
-    // ✅ Street user manually type kare so keep blank until user enters
-    if (streetController.text.isEmpty) {
-      streetController.text = "";
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Location not found. Please enable GPS.")),
+      );
     }
   }
+
+
+
 
   Widget businessProfileContent() {
     return SingleChildScrollView(
@@ -566,6 +598,120 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
               ],
             ),
           ),
+
+          _sectionTitle("Subscription Details"),///
+          _card(
+            child: subscriptions.isEmpty
+                ? Center(child: Text("No Subscription Found"))
+                : ListView.builder(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              itemCount: subscriptions.length,
+              itemBuilder: (context, index) {
+                var sub = subscriptions[index];
+                return ListTile(
+                  leading: Icon(Icons.workspace_premium, color: Colors.orange),
+                  title: Text(sub["plan_name"] ?? "Unknown Plan"),
+                  subtitle: Text("From: ${sub["start_date"]}\nTo: ${sub["end_date"]}"),
+                  trailing: Chip(
+                    label: Text(
+                      sub["status"] == "active" ? "Active" : "Expired",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    backgroundColor:
+                    sub["status"] == "active" ? Colors.green : Colors.red,
+                  ),
+                );
+              },
+            ),
+          ),
+
+          _sectionTitle("Active Subscription"),////
+          _card(
+            child: subscriptionStatus == null
+                ? Text("No Active Subscription ❌")
+                : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Plan: ${subscriptionStatus!["plan_name"]}", style: TextStyle(fontWeight: FontWeight.bold)),
+                SizedBox(height: 4),
+                Text("Expires On: ${subscriptionStatus!["expires_at"]}"),
+                SizedBox(height: 10),
+                Chip(
+                  label: Text(
+                    subscriptionStatus!["is_active"] == true ? "ACTIVE" : "EXPIRED",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  backgroundColor: subscriptionStatus!["is_active"] == true ? Colors.green : Colors.red,
+                ),
+              ],
+            ),
+          ),
+
+          _sectionTitle("Transaction History"),///////
+          _card(
+            child: userTransactions.isEmpty
+                ? Center(child: Text("No Transactions Found"))
+                : ListView.builder(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              itemCount: userTransactions.length,
+              itemBuilder: (context, index) {
+                var tx = userTransactions[index];
+
+                return ListTile(
+                  leading: Icon(Icons.receipt_long, color: Colors.blueAccent),
+
+                  title: Text(
+                    tx["plan_name"] ?? "Subscription Plan",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+
+                  subtitle: Text(
+                    "₹${tx["amount"]} • ${tx["payment_method"]}\n${tx["created_at"].toString().split(" ").first}",
+                  ),
+
+                  trailing: Chip(
+                    label: Text(
+                      tx["status"] ?? "unknown",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    backgroundColor: tx["status"] == "success"
+                        ? Colors.green
+                        : Colors.red,
+                  ),
+                );
+              },
+            ),
+          ),
+
+
+          subscriptionStatus != null && subscriptionStatus!["is_active"] == true
+              ? ElevatedButton(
+            onPressed: () async {
+              bool result = await AuthService.cancelSubscription();
+              if (result) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Subscription Cancelled ✅")),
+                );
+                // Refresh status after cancel
+                AuthService.fetchSubscriptionStatus().then((data) {
+                  setState(() {
+                    subscriptionStatus = data;
+                  });
+                });
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Failed to Cancel Subscription ❌")),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text("Cancel Subscription"),
+          )
+              : SizedBox(),
+
+
 
           _sectionTitle("Security"),
           _card(

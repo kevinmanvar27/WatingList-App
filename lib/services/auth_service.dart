@@ -61,7 +61,6 @@ class AuthService {
     }
   }
 
-
   static Future<RestaurantUser?> searchUserByPhone(String phone) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -138,8 +137,162 @@ class AuthService {
     print('profile image:-$profileUrl');
     return data["data"];
   }
+//////////
+  Future<List<dynamic>> fetchSubscriptions() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString("token");
 
+    final response = await http.get(
+      Uri.parse("https://waitinglist.rektech.work/api/subscriptions"),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Accept": "application/json",
+      },
+    );
 
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)["data"];
+    } else {
+      return [];
+    }
+  }
+
+  static Future<Map<String, dynamic>?> fetchSubscriptionStatus() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString("token");
+
+      final response = await http.get(
+        Uri.parse("https://waitinglist.rektech.work/api/subscriptions/status"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+        },
+      );
+
+      print("📦 Subscription Status Response: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body);
+        if (jsonData["success"] == true) {
+          return jsonData["data"];
+        }
+      }
+
+      return null;
+    } catch (e) {
+      print("❌ Subscription Status Error: $e");
+      return null;
+    }
+  }
+
+  static Future<bool> cancelSubscription() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString("token");
+
+      final response = await http.post(
+        Uri.parse("https://waitinglist.rektech.work/api/subscriptions/cancel"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+        },
+      );
+
+      print("🛑 Cancel Subscription Response: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body);
+        return jsonData["success"] == true;
+      }
+      return false;
+
+    } catch (e) {
+      print("❌ Cancel Subscription Error: $e");
+      return false;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> fetchSubscriptionDetails(int id) async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString("token");
+
+      final response = await http.get(
+        Uri.parse("https://waitinglist.rektech.work/api/subscriptions/$id"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+        },
+      );
+
+      print("📦 Subscription Detail Response: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body);
+        return jsonData["data"];
+      }
+      return null;
+
+    } catch (e) {
+      print("❌ Fetch Subscription Detail Error: $e");
+      return null;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> createRazorpayOrder(int planId) async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString("token");
+
+      final response = await http.post(
+        Uri.parse("https://waitinglist.rektech.work/api/subscriptions/create-razorpay-order?subscription_plan_id=$planId"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+        },
+      );
+
+      print("🔵 Razorpay Order Response: ${response.body}");
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body)["data"]; // Contains: order_id, amount, currency
+      }
+      return null;
+
+    } catch (e) {
+      print("❌ Razorpay Order Error: $e");
+      return null;
+    }
+  }
+
+  static Future<List<dynamic>> fetchUserTransactions() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString("token");
+
+      final response = await http.get(
+        Uri.parse("https://waitinglist.rektech.work/api/user-transactions"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+        },
+      );
+
+      print("📦 Transaction Response: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body);
+        return jsonData["data"]; // List of transactions
+      } else {
+        return [];
+      }
+    } catch (e) {
+      print("❌ Fetch Transaction Error: $e");
+      return [];
+    }
+  }
+//////////
   Future<void> signOut() async {
     await _googleSignIn.signOut();
     await _auth.signOut();

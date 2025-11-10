@@ -1,9 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'Screen/Business_profile_screen.dart';
-import 'Screen/Home_screen.dart';
-import 'Screen/waiting_list_screen.dart';
 import 'splash_screen.dart';
 
 Future<void> main() async {
@@ -36,12 +33,6 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         colorSchemeSeed: Colors.indigo,
       ),
-      routes: {
-        "/home": (context) => HomeScreen(),
-        "/waiting": (context) => WaitingListScreen(),
-        "/settings": (context) => Business_profile_screen(),
-      },
-
       home: SplashScreen(),
     );
   }

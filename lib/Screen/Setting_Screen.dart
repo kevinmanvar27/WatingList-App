@@ -12,7 +12,8 @@ import '../services/auth_service.dart';
 
 class Setting_Screen extends StatefulWidget {
   final VoidCallback onRefreshWaitingList;
-  const Setting_Screen({super.key, required this.onRefreshWaitingList});
+  final bool isVisible;
+  const Setting_Screen({super.key, required this.onRefreshWaitingList, this.isVisible = false});
 
   @override
   State<Setting_Screen> createState() => _Setting_ScreenState();
@@ -36,6 +37,7 @@ class _Setting_ScreenState extends State<Setting_Screen> {
   List<dynamic> _plans = [];
   bool _loading = true;
   bool _hasActiveSubscription = true;
+  bool isRestaurantOpen = false;
 
   String userName = "";
   String userEmail = "";
@@ -48,6 +50,7 @@ class _Setting_ScreenState extends State<Setting_Screen> {
     loadUsers();
     loadProfile();
     loadRestaurant();
+    loadRestaurantStatus();
 
     _razorpay = Razorpay();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
@@ -55,8 +58,42 @@ class _Setting_ScreenState extends State<Setting_Screen> {
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
   }
 
+  @override
+  void didUpdateWidget(Setting_Screen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // ✅ Refresh status when screen becomes visible
+    if (widget.isVisible && !oldWidget.isVisible) {
+      loadRestaurantStatus();
+    }
+  }
+
   void refreshUsers() {
     loadUsers();
+  }
+
+  // ✅ Add method to refresh restaurant status from parent
+  void refreshRestaurantStatus() {
+    loadRestaurantStatus();
+  }
+
+  void loadRestaurantStatus() async {
+    // ✅ Load from SharedPreferences first (real-time update)
+    final prefs = await SharedPreferences.getInstance();
+    final savedStatus = prefs.getBool("restaurant_open_status");
+    
+    if (savedStatus != null) {
+      setState(() {
+        isRestaurantOpen = savedStatus;
+      });
+    } else {
+      // ✅ Fallback: Load from API if not in SharedPreferences
+      final data = await AuthService.fetchRestaurantDetail();
+      setState(() {
+        isRestaurantOpen = data["operational_status"] == "true";
+      });
+      // Save to SharedPreferences for next time
+      prefs.setBool("restaurant_open_status", isRestaurantOpen);
+    }
   }
 
 
@@ -298,11 +335,59 @@ class _Setting_ScreenState extends State<Setting_Screen> {
 
 
 
-  void _handlePaymentSuccess(PaymentSuccessResponse response) {
+  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text("Payment Successful ✅")),
     );
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString("token");
+
+    // ✅ Receive currently selected plan price and duration from last Buy Now click
+    final selectedPlan = prefs.getString("selected_plan_id") ?? "";
+    final selectedAmount = prefs.getString("selected_plan_amount") ?? "";
+
+    if (selectedPlan.isEmpty || selectedAmount.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Plan info missing ❗ Try again")),
+      );
+      return;
+    }
+
+    final url = Uri.parse(
+        "https://waitinglist.rektech.work/api/subscriptions/purchase?"
+            "subscription_plan_id=$selectedPlan&payment_method=razorpay&"
+            "transaction_id=${response.orderId}&"
+            "razorpay_payment_id=${response.paymentId}&"
+            "razorpay_order_id=${response.orderId}&"
+            "razorpay_signature=${response.signature}&"
+            "amount_paid=$selectedAmount&currency=INR"
+    );
+
+    final res = await http.post(
+      url,
+      headers: {
+        "Authorization": "Bearer $token",
+        "Accept": "application/json",
+      },
+    );
+
+    print("📦 Purchase Response: ${res.body}");
+
+    if (res.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Subscription Activated ✅")),
+      );
+
+      /// ✅ Refresh UI (reload plans/status)
+      fetchPlans();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Activation Failed ❌")),
+      );
+    }
   }
+
 
   void _handlePaymentError(PaymentFailureResponse response) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -340,9 +425,58 @@ class _Setting_ScreenState extends State<Setting_Screen> {
                 "Add Person",
                 style: TextStyle(color: Colors.white, fontSize: 13),
               ),
-              onPressed: () {
+              onPressed: () async {
+                // ✅ FIXED LOGIC START: Check if the restaurant is CLOSED
+                if (!isRestaurantOpen) {
+                  bool? proceed = await showDialog(
+                    context: context,
+                    builder: (context) => Dialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.info_outline, color: Color(0xFFFF6F00), size: 40),
+                            SizedBox(height: 10),
+                            Text("Restaurant Closed",
+                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                            SizedBox(height: 10),
+                            Text(
+                              "Your restaurant is currently closed.\nDo you still want to add a person?",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 15),
+                            ),
+                            SizedBox(height: 25),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                TextButton(
+                                    onPressed: () => Navigator.pop(context, false),
+                                    child: Text("Cancel")),
+                                SizedBox(width: 10),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(backgroundColor: Color(0xFFFF6F00)),
+                                  onPressed: () => Navigator.pop(context, true),
+                                  child: Text("Continue", style: TextStyle(color: Colors.white)),
+                                ),
+                              ],
+                            )
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+
+                  if (proceed != true) return; // ❌ User cancels -> Stop
+                }
+
+                // ✅ FIXED LOGIC END: Only show the Add Person dialog if open OR user continues
                 _showAddUserDialog(context);
               },
+
             ),
           ],
         ),
@@ -520,10 +654,14 @@ class _Setting_ScreenState extends State<Setting_Screen> {
                                     ),
                                     elevation: 0,
                                   ),
-                                  onPressed: () {
+                                  onPressed: () async {////
+                                    SharedPreferences prefs = await SharedPreferences.getInstance();
+                                    prefs.setString("selected_plan_id", plan['id'].toString());
+                                    prefs.setString("selected_plan_amount", plan['price'].toString());
+
                                     openCheckout(
-                                      double.parse(plan['price'].toString()).round(), // ✅ Fix applied here
-                                      plan['name'],
+                                      double.parse(plan['price'].toString()).round(), // ✅ amount
+                                      plan['name'],                                   // ✅ plan name
                                     );
                                   },
                                   child: const Text(
@@ -531,8 +669,6 @@ class _Setting_ScreenState extends State<Setting_Screen> {
                                     style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                                   ),
                                 ),
-
-
 
                               ],
                             ),
