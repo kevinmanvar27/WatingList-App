@@ -9,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:waiting_list/Screen/pin_login_screen.dart';
 import 'package:waiting_list/services/auth_service.dart';
 import 'Home_screen.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'dart:math';
 
 class Business_profile_screen extends StatefulWidget {
   const Business_profile_screen({super.key});
@@ -61,7 +63,6 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
     super.initState();
     loadData(); // ✅ Don't auto override after loading saved data
 
-
     AuthService().fetchSubscriptions().then((data) {///
       setState(() {
         subscriptions = data;
@@ -85,9 +86,33 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
 
   Future pickImage() async {
     final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() => _image = File(pickedFile.path));
+
+    if (pickedFile == null) return;
+
+    File original = File(pickedFile.path);
+    int maxSize = 2 * 1024 * 1024; // 2 MB
+
+    File compressedFile = original;
+    int quality = 95;
+
+    // Compress until size < 2MB
+    while (compressedFile.lengthSync() > maxSize && quality > 10) {
+      final result = await FlutterImageCompress.compressAndGetFile(
+        compressedFile.path,
+        "${compressedFile.path}_${Random().nextInt(9999)}.jpg",
+        quality: quality,
+      );
+
+      if (result == null) break;
+      compressedFile = File(result.path);
+      quality -= 10;
     }
+
+    setState(() {
+      _image = compressedFile;
+    });
+
+    print("✅ Final Image Size: ${_image!.lengthSync() / 1024} KB");
   }
 
   Future<void> _signOut() async {
@@ -461,8 +486,17 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
         rNameController.text = data["name"] ?? "";
         phoneController.text = data["contact_number"] ?? "";
         websiteController.text = data["website"] ?? "";
-        streetController.text = data["address_line_1"] ?? "";
-        apartmentController.text = data["address_line_2"] ?? ""; // ✅ ADD THIS
+// ✅ Street should always be blank
+        streetController.text = "";
+
+// ✅ Apartment should get old saved address_line_1 if available
+        apartmentController.text = data["address_line_1"] ?? "";
+
+// ✅ If address_line_2 exists, append or use it
+        if ((data["address_line_2"] ?? "").isNotEmpty) {
+          apartmentController.text +=
+          apartmentController.text.isEmpty ? data["address_line_2"] : ", ${data["address_line_2"]}";
+        }
         cityController.text = data["city"] ?? "";
         stateController.text = data["state"] ?? "";
         countryController.text = data["country"] ?? "";
@@ -485,12 +519,13 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
       Placemark place = placeMarks[0];
 
       setState(() {
-        // ✅ Always update street
-        streetController.text = place.street ?? "";
+        // ✅ Street value should NOT fill auto
+        streetController.text = "";
 
-        // ❗ DO NOT TOUCH APARTMENT — keep user value safe
+        // ✅ Auto Fill should go to Apartment instead of Street
+        apartmentController.text = place.street ?? "";
 
-        // ✅ Update others only when empty or forced
+        // ✅ Other fields update normally
         if (forceUpdate || cityController.text.isEmpty) {
           cityController.text = place.locality ?? "";
         }
@@ -504,6 +539,7 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
           postalCodeController.text = place.postalCode ?? "";
         }
       });
+
 
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
