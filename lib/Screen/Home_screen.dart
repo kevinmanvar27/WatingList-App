@@ -347,7 +347,20 @@ class _HomeScreenState extends State<HomeScreen> {
     Future<void> _signOut() async {
       await _auth.signOut();
       final sp = await SharedPreferences.getInstance();
+      
+      // ✅ Save PIN and email before clearing
+      final savedPin = sp.getString('user_pin');
+      final savedEmail = sp.getString('user_email');
+      
       await sp.clear();
+      
+      // ✅ Restore PIN and email after logout
+      if (savedPin != null) {
+        await sp.setString('user_pin', savedPin);
+      }
+      if (savedEmail != null) {
+        await sp.setString('user_email', savedEmail);
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

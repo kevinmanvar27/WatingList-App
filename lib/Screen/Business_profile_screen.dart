@@ -113,7 +113,20 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
 
   Future<void> _signOut() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    
+    // ✅ Save PIN and email before clearing
+    final savedPin = prefs.getString('user_pin');
+    final savedEmail = prefs.getString('user_email');
+    
     await prefs.clear();
+    
+    // ✅ Restore PIN and email after logout
+    if (savedPin != null) {
+      await prefs.setString('user_pin', savedPin);
+    }
+    if (savedEmail != null) {
+      await prefs.setString('user_email', savedEmail);
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
