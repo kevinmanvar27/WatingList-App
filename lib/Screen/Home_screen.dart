@@ -41,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String selectedLocation = "";
   bool showAddress = false;
   bool isRestaurantOpen = false;
+  int? currentRestaurantId; // ✅ Store current restaurant ID
 
   @override
   void initState() {
@@ -48,6 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
     selectedIndex = widget.initialIndex;
     _loadBranding();
     _loadRestaurantStatus();
+    _loadCurrentRestaurantId(); // ✅ Load current restaurant ID
     _getLocation();
     checkLoginStatus();
     loadUsers();
@@ -66,6 +68,23 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       isRestaurantOpen = sp.getBool("restaurant_open_status") ?? false;
     });
+  }
+
+  Future<void> _loadCurrentRestaurantId() async {
+    try {
+      final sp = await SharedPreferences.getInstance();
+      final token = sp.getString("token");
+
+      if (token != null && token.isNotEmpty) {
+        final restaurantData = await AuthService.fetchRestaurantDetail();
+        setState(() {
+          currentRestaurantId = restaurantData["id"];
+        });
+        await sp.setInt("current_restaurant_id", currentRestaurantId!);
+      }
+    } catch (e) {
+      print("Error loading current restaurant ID: $e");
+    }
   }
 
   Future<void> checkLoginStatus() async {
@@ -133,7 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final body = jsonDecode(response.body);
       List data = body["data"]["data"];
       List<RestaurantModel> restaurants = data.map((e) => RestaurantModel.fromJson(e)).toList();
-      
+
       // ✅ Filter by location if selected
       if (location.isNotEmpty) {
         restaurants = restaurants.where((restaurant) {
@@ -141,12 +160,12 @@ class _HomeScreenState extends State<HomeScreen> {
           final restaurantLocation = restaurant.location.toLowerCase();
           final restaurantAddress = restaurant.fullAddress.toLowerCase();
           final selectedLoc = location.toLowerCase();
-          
-          return restaurantLocation.contains(selectedLoc) || 
+
+          return restaurantLocation.contains(selectedLoc) ||
                  restaurantAddress.contains(selectedLoc);
         }).toList();
       }
-      
+
       return restaurants;
     } else {
       throw Exception("Failed to load restaurants");
@@ -385,6 +404,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget restaurantCard(RestaurantModel model) {
+    final bool isOpenForThis = (model.id == currentRestaurantId) ? isRestaurantOpen : model.operationalStatus;
     return Container(
       margin: EdgeInsets.only(top: 15),
       padding: EdgeInsets.all(16),
@@ -423,14 +443,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: ElevatedButton(
                   onPressed: () {},
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isRestaurantOpen ? Colors.green : Colors.red,
+                    backgroundColor: isOpenForThis ? Colors.green : Colors.red,
                     padding: EdgeInsets.symmetric(horizontal: 15),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   child: Text(
-                    isRestaurantOpen ? "Open" : "Closed",
+                    isOpenForThis ? "Open" : "Closed",
                     style: TextStyle(fontSize: 13, color: Colors.white),
                   ),
                 ),
@@ -618,10 +638,32 @@ class _HomeScreenState extends State<HomeScreen> {
                   return Center(child: Text("No restaurants found"));
                 }
 
+                // ✅ Separate current restaurant from others
+                final currentRestaurant = restaurants.firstWhere(
+                  (r) => r.id == currentRestaurantId,
+                  orElse: () => restaurants.first,
+                );
+
+                final otherRestaurants = restaurants
+                    .where((r) => r.id != currentRestaurantId)
+                    .toList();
+
+                // ✅ Filter current restaurant card visibility
+                final shouldShowCurrentRestaurant =
+                    (currentRestaurant.waiting > 0 && isRestaurantOpen) ||
+                    !(currentRestaurant.waiting == 0 && !isRestaurantOpen);
+
                 return ListView.builder(
-                  itemCount: restaurants.length,
+                  itemCount: shouldShowCurrentRestaurant
+                      ? 1 + otherRestaurants.length
+                      : otherRestaurants.length,
                   itemBuilder: (context, index) {
-                    return restaurantCard(restaurants[index]);
+                    if (shouldShowCurrentRestaurant && index == 0) {
+                      return restaurantCard(currentRestaurant);
+                    }
+
+                    final adjustedIndex = shouldShowCurrentRestaurant ? index - 1 : index;
+                    return restaurantCard(otherRestaurants[adjustedIndex]);
                   },
                 );
               },

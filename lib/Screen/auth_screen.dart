@@ -28,20 +28,20 @@ class _AuthScreenState extends State<AuthScreen> {
 
         final sp = await SharedPreferences.getInstance();
         await sp.setString('token', token);
-        await sp.setBool("is_logged_in", true); // ✅ SAVE LOGIN SESSION
-        await sp.setString('user_email', email); // ✅ Add this
+        await sp.setBool("is_logged_in", true);
+        await sp.setString('user_email', email);
 
         if (!mounted) return;
 
         if(user['has_pin'] == false) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => HomeScreen()),
+            MaterialPageRoute(builder: (_) => PinSetupScreen(email: email)),
           );
         } else {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => PinSetupScreen(email: email)),
+            MaterialPageRoute(builder: (_) => HomeScreen()),
           );
         }
 

@@ -6,7 +6,6 @@ import '../Api_Model/restaurant_user_model.dart';
 import '../services/add_person_service.dart';
 import '../services/auth_service.dart';
 import 'package:intl/intl.dart';
-import 'pin_login_screen.dart';
 
 class WaitingListScreen extends StatefulWidget {
   final VoidCallback? onStatusChanged;
@@ -29,14 +28,15 @@ class WaitingListScreenState extends State<WaitingListScreen> {
     setState(() {
       // Assuming data["operational_status"] is a String like "true" or "false"
       isRestaurantOpen = data["operational_status"] == "true";
+      currentRestaurantId = data["id"];
     });
+    // Re-filter users after getting restaurant id
+    loadUsers();
   }
-
-
+  
   @override
   void initState() {
     super.initState();
-    loadUsers();
     loadRestaurantStatus();
   }
 
@@ -44,6 +44,10 @@ class WaitingListScreenState extends State<WaitingListScreen> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     print("SAVED TOKEN: ${prefs.getString("token")}");
     users = await ApiService.fetchUsers();
+    final bool hasValidRestaurantIds = users.any((u) => u.restaurantId != 0);
+    if (currentRestaurantId != null && hasValidRestaurantIds) {
+      users = users.where((u) => u.restaurantId == currentRestaurantId).toList();
+    }
     users.sort((a, b) => a.id.compareTo(b.id));
     setState(() {});
   }
@@ -59,6 +63,7 @@ class WaitingListScreenState extends State<WaitingListScreen> {
 
   bool dineInChecked = false;
   bool isRestaurantOpen = false;
+  int? currentRestaurantId;
 
 
   @override
@@ -219,20 +224,7 @@ class WaitingListScreenState extends State<WaitingListScreen> {
                             widget.onStatusChanged!();
                           }
 
-                          // 🔥 If closed AND no waiting users → Logout
-                          if (!isRestaurantOpen && users.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("Restaurant closed with no waiting users. Logging out..."),
-                                backgroundColor: Colors.orange,
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
 
-                            // Wait 2 seconds then logout
-                            await Future.delayed(Duration(seconds: 2));
-                            await _performLogout();
-                          }
 /*                          ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(isRestaurantOpen ? "Restaurant is now OPEN ✅" : "Restaurant is now CLOSED ❌"),
@@ -344,19 +336,7 @@ class WaitingListScreenState extends State<WaitingListScreen> {
                                             await ApiService.markDineIn(user.id);
                                             loadUsers();
 
-                                            // 🔥 Check if this was the last waiting user AND restaurant is closed
-                                            await Future.delayed(Duration(milliseconds: 500));
-                                            if (users.isEmpty && !isRestaurantOpen) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(
-                                                  content: Text("No waiting users left and restaurant is closed. Logging out..."),
-                                                  backgroundColor: Colors.orange,
-                                                  duration: Duration(seconds: 2),
-                                                ),
-                                              );
-                                              await Future.delayed(Duration(seconds: 2));
-                                              await _performLogout();
-                                            }
+
                                           });
 
                                           // ✅ SHOW DINE-IN MESSAGE
@@ -414,19 +394,7 @@ class WaitingListScreenState extends State<WaitingListScreen> {
                                       );
                                       loadUsers(); // ✅ UI refresh
 
-                                      // 🔥 Check if this was the last user AND restaurant is closed
-                                      await Future.delayed(Duration(milliseconds: 500)); // Wait for state update
-                                      if (users.isEmpty && !isRestaurantOpen) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text("No waiting users left and restaurant is closed. Logging out..."),
-                                            backgroundColor: Colors.orange,
-                                            duration: Duration(seconds: 2),
-                                          ),
-                                        );
-                                        await Future.delayed(Duration(seconds: 2));
-                                        await _performLogout();
-                                      }
+
                                     } else {
                                       ScaffoldMessenger.of(context).showSnackBar(
                                           SnackBar(content: Text("Failed to delete user"))
@@ -452,21 +420,7 @@ class WaitingListScreenState extends State<WaitingListScreen> {
     );
   }
 
-  Future<void> _performLogout() async {
-    final AuthService auth = AuthService();
-    await auth.signOut();
-    
-    final sp = await SharedPreferences.getInstance();
-    await sp.clear();
 
-    if (!mounted) return;
-    
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => PinLoginScreen()),
-      (route) => false,
-    );
-  }
 
   void _showAddUserDialog(BuildContext context, {RestaurantUser? user}) {
     final _formKey = GlobalKey<FormState>();

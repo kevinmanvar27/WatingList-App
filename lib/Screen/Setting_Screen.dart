@@ -334,13 +334,12 @@ class _Setting_ScreenState extends State<Setting_Screen> {
   }
 
 
-
   void _handlePaymentSuccess(PaymentSuccessResponse response) async {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text("Payment Successful ✅")),
     );
 
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    /*SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString("token");
 
     // ✅ Receive currently selected plan price and duration from last Buy Now click
@@ -385,7 +384,7 @@ class _Setting_ScreenState extends State<Setting_Screen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Activation Failed ❌")),
       );
-    }
+    }*/
   }
 
 

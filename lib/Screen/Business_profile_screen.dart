@@ -27,9 +27,9 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
   String state = "";
 
   final _formKey = GlobalKey<FormState>();
-  List subscriptions = [];////
-  Map<String, dynamic>? subscriptionStatus;////
-  List userTransactions = [];
+  //List subscriptions = [];////
+  //Map<String, dynamic>? subscriptionStatus;////
+  //List userTransactions = [];
 
   final TextEditingController ownerNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -61,7 +61,7 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
     super.initState();
     loadData(); // ✅ Don't auto override after loading saved data
 
-    AuthService().fetchSubscriptions().then((data) {///
+/*    AuthService().fetchSubscriptions().then((data) {///
       setState(() {
         subscriptions = data;
       });
@@ -77,7 +77,7 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
       setState(() {
         userTransactions = data;
       });
-    });
+    });*/
 
   }
 
@@ -638,7 +638,7 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
             ),
           ),
 
-          _sectionTitle("Subscription Details"),///
+/*          *//*_sectionTitle("Subscription Details"),///
           _card(
             child: subscriptions.isEmpty
                 ? Center(child: Text("No Subscription Found"))
@@ -722,7 +722,7 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
                 );
               },
             ),
-          ),
+          ),*//*
 
 
           subscriptionStatus != null && subscriptionStatus!["is_active"] == true
@@ -748,7 +748,7 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: Text("Cancel Subscription"),
           )
-              : SizedBox(),
+              : SizedBox(),*/
 
 
 

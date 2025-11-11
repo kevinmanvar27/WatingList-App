@@ -6,6 +6,7 @@ class RestaurantModel {
   final String contactNumber;
   final String profile;
   final int waiting;
+  final bool operationalStatus;
 
   RestaurantModel({
     required this.id,
@@ -15,6 +16,7 @@ class RestaurantModel {
     required this.contactNumber,
     required this.profile,
     required this.waiting,
+    required this.operationalStatus,
   });
 
   factory RestaurantModel.fromJson(Map<String, dynamic> json) {
@@ -26,6 +28,9 @@ class RestaurantModel {
       contactNumber: json['contact_number'] ?? "",
       profile: json['profile'] ?? "", // ✅ handle null
       waiting: json['current_waiting_count'] ?? 0, // ✅ correct key
+      operationalStatus: (json['operational_status'] is bool)
+          ? json['operational_status']
+          : ((json['operational_status']?.toString() ?? 'false') == 'true'),
     );
   }
 }

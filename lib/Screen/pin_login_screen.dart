@@ -66,15 +66,15 @@ class _PinLoginScreenState extends State<PinLoginScreen> {
         await sp.setBool("is_logged_in", true);
         await sp.setString("user_email", email);
         await sp.setString("user_pin", pin);
-        
+
         // ✅ Save token and user data from API response
         if (data['data'] != null) {
           final user = data['data']['user'];
           final token = data['data']['token'];
-          
+
           await sp.setString("token", token ?? "");
           await sp.setString("user_name", user["name"] ?? "");
-          
+
           print("✅ PIN Login - Token Saved: $token");
           print("✅ PIN Login - User Name: ${user["name"]}");
         }
@@ -156,7 +156,7 @@ class _PinLoginScreenState extends State<PinLoginScreen> {
                 ),
               ),
               SizedBox(height: 20),
-        
+
               TextField(
                 obscureText: _isPinHidden,
                 controller: _pinCtrl,
@@ -183,7 +183,7 @@ class _PinLoginScreenState extends State<PinLoginScreen> {
                 ),
               ),
               SizedBox(height: 30),
-        
+
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -197,7 +197,7 @@ class _PinLoginScreenState extends State<PinLoginScreen> {
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,color:Colors.white)),
                 ),
               ),
-        
+
               TextButton(
                 onPressed: () {
                   Navigator.pushReplacement(context,
