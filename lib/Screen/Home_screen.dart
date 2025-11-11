@@ -42,7 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String selectedLocation = "";
   bool showAddress = false;
   bool isRestaurantOpen = false;
-  int? currentRestaurantId; // ✅ Store current restaurant ID
+  int? currentRestaurantId;
 
   @override
   void initState() {
