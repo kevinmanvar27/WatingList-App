@@ -104,152 +104,214 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.width > 600;
+    final maxWidth = isTablet ? 500.0 : size.width;
+    final horizontalPadding = isTablet ? 48.0 : 24.0;
+    final logoSize = isTablet ? 120.0 : 100.0;
+    
     return Scaffold(
       backgroundColor: Color(0xFFF9FAFB),
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text(
+        title: Text(
           'Set 4-digit PIN',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: isTablet ? 22 : 18,
+          ),
         ),
         centerTitle: true,
         elevation: 1,
         backgroundColor: Color(0xFFFF6B00),
         iconTheme: IconThemeData(color: Colors.black),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-                padding: EdgeInsets.all(35),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 12,
-                      spreadRadius: 2,
-                      offset: Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: Image.asset(
-                  'assets/Images/re.png',
-                  width: 100,
-                  height: 100,
-                  fit: BoxFit.contain,
-                )),
-            SizedBox(height: 20),
-            Text(
-              'Create a secure 4-digit PIN to protect your app',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.black54),
-            ),
-            SizedBox(height: 30),
-            TextField(
-              controller: _email,
-              enabled: false,
-              readOnly: true,
-              style: TextStyle(color: Colors.black),
-              decoration: InputDecoration(
-                labelText: "Email",
-                filled: true,
-                fillColor: Colors.grey.shade300,
-                prefixIcon: Icon(Icons.email, color: Colors.grey),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey),
-                ),
-              ),
-            ),
-
-            SizedBox(height: 20),
-            TextField(
-              obscureText: _isPinHiddenn,
-              controller: _pinCtrl,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
-              decoration: InputDecoration(
-                labelText: 'Enter PIN',
-                counterText: "",
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                prefixIcon: Icon(Icons.lock, color: Color(0xFFFF6B00)),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _isPinHiddenn ? Icons.visibility_off : Icons.visibility,
-                    color: Color(0xFFFF6B00),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.symmetric(
+            horizontal: horizontalPadding,
+            vertical: isTablet ? 48.0 : 32.0,
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(isTablet ? 40 : 35),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 12,
+                        spreadRadius: 2,
+                        offset: Offset(0, 5),
+                      ),
+                    ],
                   ),
-                  onPressed: () {
-                    setState(() {
-                      _isPinHiddenn = !_isPinHiddenn;
-                    });
-                  },
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
-            TextField(
-              obscureText: _isPinHidden,
-              controller: _pin2Ctrl,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
-              decoration: InputDecoration(
-                labelText: 'Confirm PIN',
-                counterText: "",
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                prefixIcon: Icon(Icons.lock_outline, color: Color(0xFFFF6B00)),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _isPinHidden ? Icons.visibility_off : Icons.visibility,
-                    color: Color(0xFFFF6B00),
+                  child: Image.asset(
+                    'assets/Images/re.png',
+                    width: logoSize,
+                    height: logoSize,
+                    fit: BoxFit.contain,
                   ),
-                  onPressed: () {
-                    setState(() {
-                      _isPinHidden = !_isPinHidden;
-                    });
-                  },
                 ),
-              ),
-            ),
-            SizedBox(height: 30),
-            _saving
-                ? Center(child: CircularProgressIndicator(color: Color(0xFFFF6B00)))
-                : SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _savePin,
-                style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  backgroundColor: Color(0xFFFF6B00),
-                  elevation: 3,
-                ),
-                child: Text(
-                  'Save PIN',
+                SizedBox(height: isTablet ? 28 : 20),
+                Text(
+                  'Create a secure 4-digit PIN to protect your app',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18),
+                    fontSize: isTablet ? 18 : 16,
+                    color: Colors.black54,
+                  ),
                 ),
-              ),
+                SizedBox(height: isTablet ? 40 : 30),
+                TextField(
+                  controller: _email,
+                  enabled: false,
+                  readOnly: true,
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: isTablet ? 16 : 14,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: "Email",
+                    labelStyle: TextStyle(fontSize: isTablet ? 16 : 14),
+                    filled: true,
+                    fillColor: Colors.grey.shade300,
+                    prefixIcon: Icon(
+                      Icons.email,
+                      color: Colors.grey,
+                      size: isTablet ? 24 : 20,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: isTablet ? 20 : 16,
+                    ),
+                  ),
+                ),
+                SizedBox(height: isTablet ? 24 : 20),
+                TextField(
+                  obscureText: _isPinHiddenn,
+                  controller: _pinCtrl,
+                  keyboardType: TextInputType.number,
+                  maxLength: 4,
+                  style: TextStyle(fontSize: isTablet ? 16 : 14),
+                  decoration: InputDecoration(
+                    labelText: 'Enter PIN',
+                    labelStyle: TextStyle(fontSize: isTablet ? 16 : 14),
+                    counterText: "",
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: Icon(
+                      Icons.lock,
+                      color: Color(0xFFFF6B00),
+                      size: isTablet ? 24 : 20,
+                    ),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isPinHiddenn ? Icons.visibility_off : Icons.visibility,
+                        color: Color(0xFFFF6B00),
+                        size: isTablet ? 24 : 20,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isPinHiddenn = !_isPinHiddenn;
+                        });
+                      },
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: isTablet ? 20 : 16,
+                    ),
+                  ),
+                ),
+                SizedBox(height: isTablet ? 24 : 20),
+                TextField(
+                  obscureText: _isPinHidden,
+                  controller: _pin2Ctrl,
+                  keyboardType: TextInputType.number,
+                  maxLength: 4,
+                  style: TextStyle(fontSize: isTablet ? 16 : 14),
+                  decoration: InputDecoration(
+                    labelText: 'Confirm PIN',
+                    labelStyle: TextStyle(fontSize: isTablet ? 16 : 14),
+                    counterText: "",
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: Icon(
+                      Icons.lock_outline,
+                      color: Color(0xFFFF6B00),
+                      size: isTablet ? 24 : 20,
+                    ),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isPinHidden ? Icons.visibility_off : Icons.visibility,
+                        color: Color(0xFFFF6B00),
+                        size: isTablet ? 24 : 20,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isPinHidden = !_isPinHidden;
+                        });
+                      },
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: isTablet ? 20 : 16,
+                    ),
+                  ),
+                ),
+                SizedBox(height: isTablet ? 40 : 30),
+                _saving
+                    ? Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFFF6B00),
+                        ),
+                      )
+                    : SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _savePin,
+                          style: ElevatedButton.styleFrom(
+                            padding: EdgeInsets.symmetric(
+                              vertical: isTablet ? 20 : 16,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            backgroundColor: Color(0xFFFF6B00),
+                            elevation: 3,
+                          ),
+                          child: Text(
+                            'Save PIN',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: isTablet ? 20 : 18,
+                            ),
+                          ),
+                        ),
+                      ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

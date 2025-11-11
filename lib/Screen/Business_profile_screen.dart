@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:waiting_list/Screen/pin_login_screen.dart';
-import 'package:waiting_list/services/auth_service.dart';
 import 'Home_screen.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'dart:math';
@@ -48,7 +48,6 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
   final TextEditingController newPin = TextEditingController();
   final TextEditingController confirmPin = TextEditingController();
 
-
   File? _image;
   final ImagePicker _picker = ImagePicker();
   String? restaurantImageUrl;
@@ -80,7 +79,6 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
     });*/
 
   }
-
 
   Future pickImage() async {
     final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
@@ -367,6 +365,12 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
       child: TextFormField(
         controller: controller,
         enabled: enabled, // ✅ This disables the field
+        keyboardType: phone ? TextInputType.number : TextInputType.text,
+        maxLength: phone ? 10 : null,
+        inputFormatters: phone ? [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(10),
+        ] : null,
         validator: (value) {
           value = value?.trim() ?? "";
 
@@ -391,6 +395,7 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
         decoration: _decoration(label).copyWith(
           filled: true,
           fillColor: enabled ? Colors.white : Colors.grey.shade200,
+          counterText: phone ? '' : null,
         ),
       ),
     );
@@ -398,10 +403,22 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
 
 
 
-  Widget _simpleInput(String label, TextEditingController controller) {
+  Widget _simpleInput(String label, TextEditingController controller, {bool isPin = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: TextFormField(controller: controller, decoration: _decoration(label)),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: isPin ? TextInputType.number : TextInputType.text,
+        maxLength: isPin ? 4 : null,
+        inputFormatters: isPin ? [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(4),
+        ] : null,
+        obscureText: isPin,
+        decoration: _decoration(label).copyWith(
+          counterText: isPin ? '' : null,
+        ),
+      ),
     );
   }
 
@@ -473,10 +490,51 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
     var resBody = await response.stream.bytesToString();
 
     if (response.statusCode == 200) {
+      // ✅ Save owner name to SharedPreferences for display in Settings
+      await prefs.setString('user_name', ownerNameController.text);
       showMsg("✅ Saved Successfully");
     } else {
-      showMsg("❌ Error: $resBody", error: true);
+      try {
+        var errorData = json.decode(resBody);
+        String errorMessage = "";
+        
+        if (errorData['errors'] != null) {
+          Map<String, dynamic> errors = errorData['errors'];
+          errorMessage = errors.values.map((e) => e is List ? e.join(', ') : e.toString()).join('\n');
+        } else if (errorData['message'] != null) {
+          errorMessage = errorData['message'];
+        } else {
+          errorMessage = "Something went wrong";
+        }
+        
+        _showErrorDialog(errorMessage);
+      } catch (e) {
+        _showErrorDialog("Error: $resBody");
+      }
     }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.red, size: 28),
+            SizedBox(width: 10),
+            Text("Error", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(message, style: TextStyle(fontSize: 15)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("OK", style: TextStyle(color: Color(0xFFFF6B00), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> loadData() async {
@@ -485,6 +543,7 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
 
     // ✅ Email always from logged-in user stored locally
     String spEmail = prefs.getString("user_email") ?? "";
+    String spUserName = prefs.getString("user_name") ?? "";
     emailController.text = spEmail;
 
     var response = await http.get(
@@ -496,8 +555,12 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
       var data = json.decode(response.body)["data"];
 
       setState(() {
-        ownerNameController.text = data["owner_name"] ?? ""; // ✅ API thi owner name
+        // ✅ Owner name from API if available, otherwise from SharedPreferences
+        ownerNameController.text = data["owner_name"] ?? spUserName;
+        
+        // ✅ Restaurant name from API (if exists)
         rNameController.text = data["name"] ?? "";
+        
         phoneController.text = data["contact_number"] ?? "";
         websiteController.text = data["website"] ?? "";
 // ✅ Street should always be blank
@@ -566,11 +629,15 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
 
 
   Widget businessProfileContent() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).unfocus();
+      },
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
 
           // IMAGE CARD
           _card(
@@ -610,7 +677,7 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
               key: _formKey,
               child: Column(
                 children: [
-                  _formInput("Owner Name", controller: ownerNameController, required: true, enabled: true),
+                  _formInput("Owner Name", controller: ownerNameController, required: true),
                   _formInput("Email", controller: emailController, email: true, enabled: false),
                   _formInput("Restaurant Name *", controller: rNameController, required: true),
                   _formInput("Contact Number *", controller: phoneController, phone: true),
@@ -779,9 +846,9 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
                 children: [
                   Text("Change PIN", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   SizedBox(height: 12),
-                  _simpleInput("Current PIN", currentPin),
-                  _simpleInput("New PIN", newPin),
-                  _simpleInput("Confirm New PIN", confirmPin),
+                  _simpleInput("Current PIN", currentPin, isPin: true),
+                  _simpleInput("New PIN", newPin, isPin: true),
+                  _simpleInput("Confirm New PIN", confirmPin, isPin: true),
                   SizedBox(height: 10),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(backgroundColor: Color(0xFFFF6B00)),
@@ -796,6 +863,7 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
               ),
             ),
         ],
+        ),
       ),
     );
   }

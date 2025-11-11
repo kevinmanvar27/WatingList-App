@@ -27,6 +27,16 @@ class _AuthScreenState extends State<AuthScreen> {
         String email = user['email'];
 
         final sp = await SharedPreferences.getInstance();
+        
+        // ✅ Clear old user data first before saving new user
+        await sp.remove('user_name');
+        await sp.remove('user_email');
+        await sp.remove('token');
+        await sp.remove('restaurant_open_status');
+        await sp.remove('current_restaurant_id');
+        await sp.remove('profile_image');
+        
+        // ✅ Save new user data
         await sp.setString('token', token);
         await sp.setBool("is_logged_in", true);
         await sp.setString('user_email', email);
@@ -65,86 +75,106 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
       backgroundColor: Color(0xFFF9FAFB), // Light smooth background
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 30.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                  padding: EdgeInsets.all(35),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 12,
-                        spreadRadius: 2,
-                        offset: Offset(0, 5),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: screenHeight - MediaQuery.of(context).padding.top - MediaQuery.of(context).padding.bottom,
+            ),
+            child: IntrinsicHeight(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: screenWidth * 0.08,
+                  vertical: 20,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Spacer(flex: 1),
+                    Container(
+                        padding: EdgeInsets.all(screenWidth * 0.08),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 12,
+                              spreadRadius: 2,
+                              offset: Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Image.asset(
+                          'assets/Images/re.png',
+                          width: screenWidth * 0.25,
+                          height: screenWidth * 0.25,
+                          fit: BoxFit.contain,
+                        )
+                    ),
+
+                    SizedBox(height: screenHeight * 0.025),
+
+                    // Title
+                    Text(
+                      'Welcome!',
+                      style: TextStyle(
+                          color: Colors.black,
+                          fontSize: screenWidth * 0.08,
+                          fontWeight: FontWeight.bold),
+                    ),
+
+                    SizedBox(height: screenHeight * 0.015),
+
+                    Text(
+                      'Sign in with your Google account to continue',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.black54,
+                        fontSize: screenWidth * 0.04,
                       ),
-                    ],
-                  ),
-                  child: Image.asset(
-                    'assets/Images/re.png',
-                    width: 100,
-                    height: 100,
-                    fit: BoxFit.contain,
-                  )
-              ),
+                    ),
 
-              SizedBox(height: 20),
+                    SizedBox(height: screenHeight * 0.05),
 
-              // Title
-              Text(
-                'Welcome!',
-                style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold),
-              ),
-
-              SizedBox(height: 10),
-
-              Text(
-                'Sign in with your Google account to continue',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.black54, fontSize: 16),
-              ),
-
-              SizedBox(height: 40),
-
-              // Button
-              _loading
-                  ? CircularProgressIndicator(color: Color(0xFFFF6B00))
-                  : ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  padding:
-                  EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-                  backgroundColor: Color(0xFFFF6B00),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 3,
+                    // Button
+                    _loading
+                        ? CircularProgressIndicator(color: Color(0xFFFF6B00))
+                        : ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        padding:
+                        EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                        backgroundColor: Color(0xFFFF6B00),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 3,
+                      ),
+                      child: Text(
+                        'Sign in with Google',
+                        style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: _googleSignIn,
+                    ),
+                    SizedBox(height: 10,),
+                    TextButton(
+                      onPressed: (){
+                        Navigator.push(context, MaterialPageRoute(builder: (context)=>PinLoginScreen()));
+                      },
+                      child: Text("Login With PIN",style: TextStyle(color: Color(0xFFFF6B00),fontSize: 18),),
+                    ),
+                    Spacer(flex: 1),
+                  ],
                 ),
-                child: Text(
-                  'Sign in with Google',
-                  style:
-                  TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                onPressed: _googleSignIn,
               ),
-              SizedBox(height: 10,),
-              TextButton(
-                onPressed: (){
-                  Navigator.push(context, MaterialPageRoute(builder: (context)=>PinLoginScreen()));
-                },
-                child: Text("Login With PIN",style: TextStyle(color: Color(0xFFFF6B00),fontSize: 18),),
-              )
-            ],
+            ),
           ),
         ),
       ),

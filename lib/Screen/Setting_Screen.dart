@@ -63,6 +63,7 @@ class _Setting_ScreenState extends State<Setting_Screen> {
     // ✅ Refresh status when screen becomes visible
     if (widget.isVisible && !oldWidget.isVisible) {
       loadRestaurantStatus();
+      loadProfile(); // ✅ Reload profile to get updated owner name
     }
   }
 
@@ -563,8 +564,11 @@ class _Setting_ScreenState extends State<Setting_Screen> {
                   const SizedBox(height: 10),
 
                   GestureDetector(
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context)=>Business_profile_screen()));
+                    onTap: () async {
+                      await Navigator.push(context, MaterialPageRoute(builder: (context)=>Business_profile_screen()));
+                      // ✅ Reload profile after returning from Business Profile screen
+                      loadProfile();
+                      loadRestaurant();
                     },
                     child: const Text(
                       "Update Resturant",

@@ -6,7 +6,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:waiting_list/Screen/pin_login_screen.dart';
 import 'package:waiting_list/Screen/waiting_list_screen.dart';
 import '../Api_Model/restaurant_model.dart';
 import '../Api_Model/restaurant_user_model.dart';
@@ -352,15 +351,18 @@ class _HomeScreenState extends State<HomeScreen> {
       final savedPin = sp.getString('user_pin');
       final savedEmail = sp.getString('user_email');
       
+      // ✅ Clear ALL data including token, user data, etc.
       await sp.clear();
       
-      // ✅ Restore PIN and email after logout
+      // ✅ Restore only PIN and email after logout
       if (savedPin != null) {
         await sp.setString('user_pin', savedPin);
       }
       if (savedEmail != null) {
         await sp.setString('user_email', savedEmail);
       }
+      // ✅ Ensure is_logged_in is false
+      await sp.setBool('is_logged_in', false);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -372,9 +374,10 @@ class _HomeScreenState extends State<HomeScreen> {
             content: Text("Logout Successfully ✅",style: TextStyle(color: Colors.black,fontWeight: FontWeight.bold),)),
       );
 
+      // ✅ Redirect to AuthScreen instead of HomeScreen to force re-login
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => HomeScreen()),
+        MaterialPageRoute(builder: (_) => AuthScreen()),
             (route) => false,
       );
     }

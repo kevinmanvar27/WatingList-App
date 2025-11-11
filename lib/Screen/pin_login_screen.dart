@@ -63,6 +63,14 @@ class _PinLoginScreenState extends State<PinLoginScreen> {
       if (response.statusCode == 200 && data['message'] == "PIN authentication successful") {
         final sp = await SharedPreferences.getInstance();
 
+        // ✅ Clear old user data first before saving new user
+        await sp.remove('user_name');
+        await sp.remove('token');
+        await sp.remove('restaurant_open_status');
+        await sp.remove('current_restaurant_id');
+        await sp.remove('profile_image');
+        
+        // ✅ Save new user login status and credentials
         await sp.setBool("is_logged_in", true);
         await sp.setString("user_email", email);
         await sp.setString("user_pin", pin);
@@ -105,6 +113,9 @@ class _PinLoginScreenState extends State<PinLoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
       backgroundColor: Color(0xFFF9FAFB),
       appBar: AppBar(
@@ -115,98 +126,121 @@ class _PinLoginScreenState extends State<PinLoginScreen> {
         backgroundColor: Color(0xFFFF6B00),
         elevation: 1,
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                  padding: EdgeInsets.all(35),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 12,
-                        spreadRadius: 2,
-                        offset: Offset(0, 5),
+      body: SafeArea(
+        child: GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: screenHeight - kToolbarHeight - MediaQuery.of(context).padding.top - MediaQuery.of(context).padding.bottom,
+              ),
+              child: IntrinsicHeight(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: screenWidth * 0.08,
+                    vertical: screenHeight * 0.03,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Spacer(flex: 1),
+                      Container(
+                          padding: EdgeInsets.all(screenWidth * 0.08),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 12,
+                                spreadRadius: 2,
+                                offset: Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Image.asset(
+                            'assets/Images/re.png',
+                            width: screenWidth * 0.25,
+                            height: screenWidth * 0.25,
+                            fit: BoxFit.contain,
+                          )),
+                      SizedBox(height: screenHeight * 0.025),
+
+                      TextField(
+                        controller: _emailCtrl,
+                        readOnly: true,
+                        enabled: false,
+                        style: TextStyle(color: Colors.black54),
+                        decoration: InputDecoration(
+                          labelText: 'Email',
+                          counterText: '',
+                          prefixIcon: Icon(Icons.email, color: Color(0xFFFF6B00)),
+                          filled: true,
+                          fillColor: Colors.grey[200],
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          disabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                        ),
                       ),
+                      SizedBox(height: screenHeight * 0.025),
+
+                      TextField(
+                        obscureText: _isPinHidden,
+                        controller: _pinCtrl,
+                        keyboardType: TextInputType.number,
+                        maxLength: 4,
+                        decoration: InputDecoration(
+                          labelText: 'PIN',
+                          counterText: '',
+                          prefixIcon: Icon(Icons.lock, color: Color(0xFFFF6B00)),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _isPinHidden ? Icons.visibility_off : Icons.visibility,
+                              color: Color(0xFFFF6B00),
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isPinHidden = !_isPinHidden;
+                              });
+                            },
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                      SizedBox(height: screenHeight * 0.04),
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: _login,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFFFF6B00),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: Text('Login',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,color:Colors.white)),
+                        ),
+                      ),
+
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pushReplacement(context,
+                              MaterialPageRoute(builder: (_) => AuthScreen()));
+                        },
+                        child: Text('Sign in with Google instead',
+                            style: TextStyle(color: Color(0xFFFF6B00), fontSize: 16)),
+                      ),
+                      Spacer(flex: 1),
                     ],
                   ),
-                  child: Image.asset(
-                    'assets/Images/re.png',
-                    width: 100,
-                    height: 100,
-                    fit: BoxFit.contain,
-                  )),
-              SizedBox(height: 20),
-
-              TextField(
-                controller: _emailCtrl,
-                style: TextStyle(color: Colors.black),
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  counterText: '',
-                  prefixIcon: Icon(Icons.email, color: Color(0xFFFF6B00)),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
-              SizedBox(height: 20),
-
-              TextField(
-                obscureText: _isPinHidden,
-                controller: _pinCtrl,
-                keyboardType: TextInputType.number,
-                maxLength: 4,
-                decoration: InputDecoration(
-                  labelText: 'PIN',
-                  counterText: '',
-                  prefixIcon: Icon(Icons.lock, color: Color(0xFFFF6B00)),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _isPinHidden ? Icons.visibility_off : Icons.visibility,
-                      color: Color(0xFFFF6B00),
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _isPinHidden = !_isPinHidden;
-                      });
-                    },
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              SizedBox(height: 30),
-
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _login,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFFFF6B00),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Text('Login',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,color:Colors.white)),
-                ),
-              ),
-
-              TextButton(
-                onPressed: () {
-                  Navigator.pushReplacement(context,
-                      MaterialPageRoute(builder: (_) => AuthScreen()));
-                },
-                child: Text('Sign in with Google instead',
-                    style: TextStyle(color: Color(0xFFFF6B00), fontSize: 16)),
-              ),
-            ],
+            ),
           ),
         ),
       ),
