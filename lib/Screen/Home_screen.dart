@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
@@ -134,6 +135,171 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
 
+  void _chooseLocation() {
+    const String googleApiKey = "YOUR_GOOGLE_API_KEY"; // TODO: set your Places API key
+    final TextEditingController locCtrl = TextEditingController(text: selectedLocation);
+
+    List<dynamic> suggestions = [];
+    bool isLoading = false;
+    Timer? debounce;
+
+    Future<List<dynamic>> _placesAutocomplete(String input) async {
+      if (input.isEmpty) return [];
+      final url = Uri.parse(
+        "https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${Uri.encodeComponent(input)}&types=geocode&key=$googleApiKey",
+      );
+      try {
+        final res = await http.get(url);
+        if (res.statusCode == 200) {
+          final data = jsonDecode(res.body);
+          return (data["predictions"] ?? []) as List<dynamic>;
+        }
+      } catch (_) {}
+      return [];
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Text(
+                        "Select Location",
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    SizedBox(height: 14),
+                    TextField(
+                      controller: locCtrl,
+                      onChanged: (value) {
+                        debounce?.cancel();
+                        debounce = Timer(const Duration(milliseconds: 350), () async {
+                          setStateDialog(() => isLoading = true);
+                          final preds = await _placesAutocomplete(value.trim());
+                          setStateDialog(() {
+                            suggestions = preds;
+                            isLoading = false;
+                          });
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: "City, area or address",
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    if (isLoading)
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Row(
+                          children: [
+                            SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                            SizedBox(width: 8),
+                            Text("Searching..."),
+                          ],
+                        ),
+                      ),
+                    if (!isLoading && suggestions.isNotEmpty)
+                      ConstrainedBox(
+                        constraints: BoxConstraints(maxHeight: 200),
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: suggestions.length,
+                          separatorBuilder: (_, __) => Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final s = suggestions[index];
+                            final desc = (s["description"] ?? "").toString();
+                            return ListTile(
+                              dense: true,
+                              title: Text(desc, maxLines: 2, overflow: TextOverflow.ellipsis),
+                              leading: Icon(Icons.place, color: Colors.redAccent),
+                              onTap: () {
+                                setState(() {
+                                  selectedLocation = desc;
+                                });
+                                Navigator.pop(context);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              debounce?.cancel();
+                              Navigator.pop(context);
+                            },
+                            child: Text("Cancel"),
+                          ),
+                        ),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                selectedLocation = locCtrl.text.trim();
+                              });
+                              debounce?.cancel();
+                              Navigator.pop(context);
+                            },
+                            child: Text("Apply"),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () async {
+                            await _getLocation();
+                            debounce?.cancel();
+                            Navigator.pop(context);
+                          },
+                          child: Text("Use current location"),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              selectedLocation = "";
+                            });
+                            debounce?.cancel();
+                            Navigator.pop(context);
+                          },
+                          child: Text("Clear filter"),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+  
   Future<void> _loadBranding() async {
     final sp = await SharedPreferences.getInstance();
     setState(() {
@@ -586,7 +752,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Expanded(
                 child: InkWell(
                   onTap: () {
-                    _getLocation();
+                    _chooseLocation();
                   },
                   child: Container(
                     height: 48,
