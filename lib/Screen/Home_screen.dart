@@ -299,7 +299,7 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
-  
+
   Future<void> _loadBranding() async {
     final sp = await SharedPreferences.getInstance();
     setState(() {
@@ -316,8 +316,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (response.statusCode == 200) {
       final body = jsonDecode(response.body);
+      print("Resturant data:-${body['data']}");
       List data = body["data"]["data"];
       List<RestaurantModel> restaurants = data.map((e) => RestaurantModel.fromJson(e)).toList();
+
+      // 🔹 Print each restaurant’s raw JSON
+      print("----------- Restaurants List -----------");
+      for (var item in data) {
+        print(jsonEncode(item)); // prints raw JSON data of each restaurant
+        print("---------------------------------------");
+      }
 
       // ✅ Filter by location if selected
       if (location.isNotEmpty) {
@@ -328,7 +336,7 @@ class _HomeScreenState extends State<HomeScreen> {
           final selectedLoc = location.toLowerCase();
 
           return restaurantLocation.contains(selectedLoc) ||
-                 restaurantAddress.contains(selectedLoc);
+              restaurantAddress.contains(selectedLoc);
         }).toList();
       }
 
@@ -806,7 +814,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 // ✅ Separate current restaurant from others
                 final currentRestaurant = restaurants.firstWhere(
-                  (r) => r.id == currentRestaurantId,
+                      (r) => r.id == currentRestaurantId,
                   orElse: () => restaurants.first,
                 );
 
@@ -817,7 +825,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 // ✅ Filter current restaurant card visibility
                 final shouldShowCurrentRestaurant =
                     (currentRestaurant.waiting > 0 && isRestaurantOpen) ||
-                    !(currentRestaurant.waiting == 0 && !isRestaurantOpen);
+                        !(currentRestaurant.waiting == 0 && !isRestaurantOpen);
 
                 return ListView.builder(
                   itemCount: shouldShowCurrentRestaurant
