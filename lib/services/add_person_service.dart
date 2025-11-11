@@ -39,8 +39,6 @@ class ApiService {
       },
     );
 
-    print("POST RESPONSE: ${response.body}");
-
     if (response.statusCode == 200) {
       final jsonData = json.decode(response.body);
       return RestaurantUser.fromJson(jsonData["data"]);
@@ -59,8 +57,6 @@ class ApiService {
         "Authorization": "Bearer $token",
       },
     );
-
-    print("GET RESPONSE: ${response.body}");
 
     if (response.statusCode == 200) {
       final jsonData = json.decode(response.body);
@@ -83,7 +79,6 @@ class ApiService {
       },
     );
 
-    print("DELETE STATUS: ${response.statusCode}");
     return response.statusCode == 200 || response.statusCode == 204;
   }
 
@@ -108,23 +103,18 @@ class ApiService {
       }),
     );
 
-    print("EDIT STATUS: ${response.statusCode}");
-    print("EDIT RESPONSE: ${response.body}");
-
     return response.statusCode == 200;
   }
 
   // ✅ Correct Mark Dine-In
   static Future<bool> markDineIn(int id) async {
     final response = await postApi("$baseUrl/restaurant-users/$id/mark-dine-in");
-    print("MARK DINE-IN STATUS: ${response.statusCode}");
     return response.statusCode == 200;
   }
 
   // ✅ Correct Mark Waiting
   static Future<bool> markWaiting(int id) async {
     final response = await postApi("$baseUrl/restaurant-users/$id/mark-waiting");
-    print("MARK WAITING STATUS: ${response.statusCode}");
     return response.statusCode == 200;
   }
 }

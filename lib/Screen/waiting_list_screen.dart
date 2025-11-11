@@ -42,7 +42,6 @@ class WaitingListScreenState extends State<WaitingListScreen> {
 
   void loadUsers() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    print("SAVED TOKEN: ${prefs.getString("token")}");
     users = await ApiService.fetchUsers();
     final bool hasValidRestaurantIds = users.any((u) => u.restaurantId != 0);
     if (currentRestaurantId != null && hasValidRestaurantIds) {
@@ -56,8 +55,6 @@ class WaitingListScreenState extends State<WaitingListScreen> {
     final Uri callUri = Uri(scheme: 'tel', path: phone);
     if (await canLaunchUrl(callUri)) {
       await launchUrl(callUri);
-    } else {
-      print("Could not launch dialer");
     }
   }
 

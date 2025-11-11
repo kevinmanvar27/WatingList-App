@@ -139,10 +139,10 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               SizedBox(height: 10,),
               TextButton(
-                  onPressed: (){
-                    Navigator.push(context, MaterialPageRoute(builder: (context)=>PinLoginScreen()));
-                  },
-                  child: Text("Login With PIN",style: TextStyle(color: Color(0xFFFF6B00),fontSize: 18),),
+                onPressed: (){
+                  Navigator.push(context, MaterialPageRoute(builder: (context)=>PinLoginScreen()));
+                },
+                child: Text("Login With PIN",style: TextStyle(color: Color(0xFFFF6B00),fontSize: 18),),
               )
             ],
           ),

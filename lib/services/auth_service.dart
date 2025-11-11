@@ -30,7 +30,6 @@ class AuthService {
       );
 
       final data = jsonDecode(response.body);
-      print("✅ Backend Data: $data");
 
       // ✅ Validate and Extract Data
       if (response.statusCode == 200 && data["success"] == true) {
@@ -43,20 +42,12 @@ class AuthService {
         await prefs.setString("user_email", user["email"] ?? "");
         await prefs.setString("token", token ?? "");
 
-        print("✅ Saved User:");
-        print("Access Token:- $accessToken");
-        print("Name: ${user["name"]}");
-        print("Email: ${user["email"]}");
-        print("Token: $token");
-
         return data;
       } else {
-        print("❌ Login Failed Response: $data");
         return null;
       }
 
     } catch (e) {
-      print("Google Sign-in Error: $e");
       return null;
     }
   }
@@ -66,9 +57,6 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString("token") ?? "";
 
-      print("🔍 Searching Phone → $phone");
-      print("🔑 Token → $token");
-
       final response = await http.get(
         Uri.parse("https://waitinglist.rektech.work/api/restaurant-users/search/by-phone/${phone.trim()}"),
         headers: {
@@ -76,9 +64,6 @@ class AuthService {
           "Accept": "application/json"
         },
       );
-
-      print("📩 Status Code → ${response.statusCode}");
-      print("📦 Response → ${response.body}");
 
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
@@ -90,7 +75,6 @@ class AuthService {
 
       return null;
     } catch (e) {
-      print("❌ Search User Error: $e");
       return null;
     }
   }
@@ -134,7 +118,6 @@ class AuthService {
     final data = jsonDecode(response.body);
     final profilePath = data["data"]["profile"];
     final profileUrl = "https://waitinglist.rektech.work/storage/$profilePath";
-    print('profile image:-$profileUrl');
     return data["data"];
   }
 //////////
@@ -170,8 +153,6 @@ class AuthService {
         },
       );
 
-      print("📦 Subscription Status Response: ${response.body}");
-
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
         if (jsonData["success"] == true) {
@@ -181,7 +162,6 @@ class AuthService {
 
       return null;
     } catch (e) {
-      print("❌ Subscription Status Error: $e");
       return null;
     }
   }
@@ -199,8 +179,6 @@ class AuthService {
         },
       );
 
-      print("🛑 Cancel Subscription Response: ${response.body}");
-
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
         return jsonData["success"] == true;
@@ -208,7 +186,6 @@ class AuthService {
       return false;
 
     } catch (e) {
-      print("❌ Cancel Subscription Error: $e");
       return false;
     }
   }
@@ -226,8 +203,6 @@ class AuthService {
         },
       );
 
-      print("📦 Subscription Detail Response: ${response.body}");
-
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
         return jsonData["data"];
@@ -235,7 +210,6 @@ class AuthService {
       return null;
 
     } catch (e) {
-      print("❌ Fetch Subscription Detail Error: $e");
       return null;
     }
   }
@@ -253,15 +227,12 @@ class AuthService {
         },
       );
 
-      print("🔵 Razorpay Order Response: ${response.body}");
-
       if (response.statusCode == 200) {
         return jsonDecode(response.body)["data"]; // Contains: order_id, amount, currency
       }
       return null;
 
     } catch (e) {
-      print("❌ Razorpay Order Error: $e");
       return null;
     }
   }
@@ -279,8 +250,6 @@ class AuthService {
         },
       );
 
-      print("📦 Transaction Response: ${response.body}");
-
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
         return jsonData["data"]; // List of transactions
@@ -288,7 +257,6 @@ class AuthService {
         return [];
       }
     } catch (e) {
-      print("❌ Fetch Transaction Error: $e");
       return [];
     }
   }

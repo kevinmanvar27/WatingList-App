@@ -109,8 +109,6 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
     setState(() {
       _image = compressedFile;
     });
-
-    print("✅ Final Image Size: ${_image!.lengthSync() / 1024} KB");
   }
 
   Future<void> _signOut() async {

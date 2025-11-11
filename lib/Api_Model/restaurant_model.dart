@@ -20,17 +20,24 @@ class RestaurantModel {
   });
 
   factory RestaurantModel.fromJson(Map<String, dynamic> json) {
+    // Build location from city, state, country
+    String locationStr = "";
+    if (json['city'] != null && json['city'].toString().isNotEmpty) {
+      locationStr = json['city'];
+    }
+    if (json['state'] != null && json['state'].toString().isNotEmpty) {
+      locationStr += locationStr.isEmpty ? json['state'] : ", ${json['state']}";
+    }
+    
     return RestaurantModel(
       id: json['id'] ?? 0,
       name: json['name'] ?? "",
-      location: json['location'] ?? "",
+      location: locationStr,
       fullAddress: json['full_address'] ?? "",
       contactNumber: json['contact_number'] ?? "",
-      profile: json['profile'] ?? "", // ✅ handle null
-      waiting: json['current_waiting_count'] ?? 0, // ✅ correct key
-      operationalStatus: (json['operational_status'] is bool)
-          ? json['operational_status']
-          : ((json['operational_status']?.toString() ?? 'false') == 'true'),
+      profile: json['profile'] ?? "",
+      waiting: json['current_waiting_count'] ?? 0,
+      operationalStatus: json['is_active'] == true,
     );
   }
 }

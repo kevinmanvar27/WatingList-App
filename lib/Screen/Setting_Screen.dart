@@ -27,7 +27,6 @@ class _Setting_ScreenState extends State<Setting_Screen> {
 
   void loadUsers() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    print("SAVED TOKEN: ${prefs.getString("token")}");
     users = await ApiService.fetchUsers();
     setState(() {});
   }
@@ -116,7 +115,6 @@ class _Setting_ScreenState extends State<Setting_Screen> {
         _loading = false;
         _hasActiveSubscription = false;
       });
-      print("Error fetching plans: $e");
     }
   }
 
@@ -320,7 +318,7 @@ class _Setting_ScreenState extends State<Setting_Screen> {
     try {
       _razorpay.open(options);
     } catch (e) {
-      print(e.toString());
+      // Error opening Razorpay
     }
   }
 
@@ -371,8 +369,6 @@ class _Setting_ScreenState extends State<Setting_Screen> {
       },
     );
 
-    print("📦 Purchase Response: ${res.body}");
-
     if (res.statusCode == 200) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Subscription Activated ✅")),
@@ -395,7 +391,7 @@ class _Setting_ScreenState extends State<Setting_Screen> {
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {
-    print("External Wallet: ${response.walletName}");
+    // External wallet selected
   }
 
   @override

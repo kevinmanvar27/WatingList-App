@@ -31,7 +31,6 @@ class _HomeScreenState extends State<HomeScreen> {
   List<RestaurantUser> users = [];
   void loadUsers() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    print("SAVED TOKEN: ${prefs.getString("token")}");
     users = await ApiService.fetchUsers();
     setState(() {});
   }
@@ -84,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
         await sp.setInt("current_restaurant_id", currentRestaurantId!);
       }
     } catch (e) {
-      print("Error loading current restaurant ID: $e");
+      // Error loading current restaurant ID
     }
   }
 
@@ -316,16 +315,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (response.statusCode == 200) {
       final body = jsonDecode(response.body);
-      print("Resturant data:-${body['data']}");
       List data = body["data"]["data"];
       List<RestaurantModel> restaurants = data.map((e) => RestaurantModel.fromJson(e)).toList();
-
-      // 🔹 Print each restaurant’s raw JSON
-      print("----------- Restaurants List -----------");
-      for (var item in data) {
-        print(jsonEncode(item)); // prints raw JSON data of each restaurant
-        print("---------------------------------------");
-      }
 
       // ✅ Filter by location if selected
       if (location.isNotEmpty) {
@@ -370,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => PinLoginScreen()),
+        MaterialPageRoute(builder: (_) => HomeScreen()),
             (route) => false,
       );
     }
@@ -602,14 +593,25 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  (model.profile.isEmpty || model.profile == null)
-                      ? "https://cdn-icons-png.flaticon.com/128/562/562678.png"
-                      : "https://waitinglist.rektech.work${model.profile}",
-                  height: 50,
-                  width: 50,
-                  fit: BoxFit.cover,
-                ),
+                child: model.profile.isEmpty
+                    ? Image.network(
+                        "https://cdn-icons-png.flaticon.com/128/562/562678.png",
+                        height: 50,
+                        width: 50,
+                        fit: BoxFit.cover,
+                      )
+                    : Image.network(
+                        "https://waitinglist.rektech.work${model.profile}",
+                        height: 50,
+                        width: 50,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Image.network(
+                          "https://cdn-icons-png.flaticon.com/128/562/562678.png",
+                          height: 50,
+                          width: 50,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
               ),
               SizedBox(height: 10),
               SizedBox(
@@ -812,32 +814,33 @@ class _HomeScreenState extends State<HomeScreen> {
                   return Center(child: Text("No restaurants found"));
                 }
 
-                // ✅ Separate current restaurant from others
-                final currentRestaurant = restaurants.firstWhere(
-                      (r) => r.id == currentRestaurantId,
-                  orElse: () => restaurants.first,
-                );
+                // ✅ Filter restaurants based on visibility rules:
+                // Show if: open OR has waiting customers
+                // Hide if: closed AND no waiting customers
+                final visibleRestaurants = restaurants.where((restaurant) {
+                  final bool isOpen = (restaurant.id == currentRestaurantId) 
+                      ? isRestaurantOpen 
+                      : restaurant.operationalStatus;
+                  
+                  // Show if open OR has waiting > 0
+                  return isOpen || restaurant.waiting > 0;
+                }).toList();
 
-                final otherRestaurants = restaurants
-                    .where((r) => r.id != currentRestaurantId)
-                    .toList();
+                if (visibleRestaurants.isEmpty) {
+                  return Center(child: Text("No restaurants available"));
+                }
 
-                // ✅ Filter current restaurant card visibility
-                final shouldShowCurrentRestaurant =
-                    (currentRestaurant.waiting > 0 && isRestaurantOpen) ||
-                        !(currentRestaurant.waiting == 0 && !isRestaurantOpen);
+                // ✅ Sort to show current restaurant first
+                visibleRestaurants.sort((a, b) {
+                  if (a.id == currentRestaurantId) return -1;
+                  if (b.id == currentRestaurantId) return 1;
+                  return 0;
+                });
 
                 return ListView.builder(
-                  itemCount: shouldShowCurrentRestaurant
-                      ? 1 + otherRestaurants.length
-                      : otherRestaurants.length,
+                  itemCount: visibleRestaurants.length,
                   itemBuilder: (context, index) {
-                    if (shouldShowCurrentRestaurant && index == 0) {
-                      return restaurantCard(currentRestaurant);
-                    }
-
-                    final adjustedIndex = shouldShowCurrentRestaurant ? index - 1 : index;
-                    return restaurantCard(otherRestaurants[adjustedIndex]);
+                    return restaurantCard(visibleRestaurants[index]);
                   },
                 );
               },
