@@ -27,19 +27,25 @@ class _AuthScreenState extends State<AuthScreen> {
         String email = user['email'];
 
         final sp = await SharedPreferences.getInstance();
-        
-        // ✅ Clear old user data first before saving new user
+
+        // 1) Clear old session keys (prevents using stale token)
+        await sp.remove('token');
         await sp.remove('user_name');
         await sp.remove('user_email');
-        await sp.remove('token');
         await sp.remove('restaurant_open_status');
         await sp.remove('current_restaurant_id');
         await sp.remove('profile_image');
-        
-        // ✅ Save new user data
-        await sp.setString('token', token);
-        await sp.setBool("is_logged_in", true);
-        await sp.setString('user_email', email);
+        await sp.remove('is_logged_in');
+        await sp.remove('user_id');
+
+        // 2) Persist new session atomically
+        await sp.setString('token', token ?? "");
+        await sp.setBool('is_logged_in', true);
+        await sp.setString('user_email', email ?? "");
+        await sp.setString('user_name', user['name'] ?? "");
+        if (user['id'] != null) {
+          await sp.setInt('user_id', user['id']);
+        }
 
         if (!mounted) return;
 

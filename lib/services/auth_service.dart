@@ -30,6 +30,7 @@ class AuthService {
       );
 
       final data = jsonDecode(response.body);
+      print("Google login response:-${response.body}");
 
       // ✅ Validate and Extract Data
       if (response.statusCode == 200 && data["success"] == true) {
@@ -262,6 +263,35 @@ class AuthService {
   }
 //////////
   Future<void> signOut() async {
+    // Try to revoke token on the backend (if endpoint exists). Safe to ignore failures.
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString("token");
+      if (token != null && token.isNotEmpty) {
+
+        await http.post(
+          Uri.parse("https://waitinglist.rektech.work/api/auth/logout"),
+          headers: {
+            "Authorization": "Bearer $token",
+            "Accept": "application/json",
+          },
+        );
+      }
+
+      // Explicitly clear user-specific data to avoid leakage across sessions
+      await prefs.remove("token");
+      await prefs.remove("user_name");
+      await prefs.remove("user_email");
+      await prefs.remove("restaurant_open_status");
+      await prefs.remove("current_restaurant_id");
+      await prefs.remove("profile_image");
+      await prefs.remove("is_logged_in");
+      await prefs.remove("user_id");
+    } catch (_) {
+      // Swallow errors to ensure sign out continues
+    }
+
+    // Sign out from providers
     await _googleSignIn.signOut();
     await _auth.signOut();
   }

@@ -25,7 +25,8 @@ class ApiService {
 
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString("token");
-
+    print("🔹 Adding restaurant user...");
+    print("➡️ Name: $name, Mobile: $mobile, Total Persons: $totalPersons");
     final response = await http.post(
       Uri.parse("$baseUrl/restaurant-users"),
       headers: {
@@ -39,9 +40,17 @@ class ApiService {
       },
     );
 
+    print("📩 Response Status Code: ${response.statusCode}");
+    print("📩 Response Body: ${response.body}");
+
     if (response.statusCode == 200) {
+      print("response:-${response.body}");
+
       final jsonData = json.decode(response.body);
+      print("✅ User Added Successfully!");
+      print("👤 Parsed Data: ${jsonData["data"]}");
       return RestaurantUser.fromJson(jsonData["data"]);
+
     }
     return null;
   }

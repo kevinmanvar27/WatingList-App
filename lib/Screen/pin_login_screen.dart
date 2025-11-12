@@ -62,15 +62,19 @@ class _PinLoginScreenState extends State<PinLoginScreen> {
 
       if (response.statusCode == 200 && data['message'] == "PIN authentication successful") {
         final sp = await SharedPreferences.getInstance();
+        print("Login with pin response:-${response.body}");
 
-        // ✅ Clear old user data first before saving new user
-        await sp.remove('user_name');
+        // 1) Clear old session keys (prevents using stale token)
         await sp.remove('token');
+        await sp.remove('user_name');
+        await sp.remove('user_email');
         await sp.remove('restaurant_open_status');
         await sp.remove('current_restaurant_id');
         await sp.remove('profile_image');
-        
-        // ✅ Save new user login status and credentials
+        await sp.remove('is_logged_in');
+        await sp.remove('user_id');
+
+        // 2) Persist new session atomically
         await sp.setBool("is_logged_in", true);
         await sp.setString("user_email", email);
         await sp.setString("user_pin", pin);
@@ -82,6 +86,9 @@ class _PinLoginScreenState extends State<PinLoginScreen> {
 
           await sp.setString("token", token ?? "");
           await sp.setString("user_name", user["name"] ?? "");
+          if (user['id'] != null) {
+            await sp.setInt('user_id', user['id']);
+          }
 
           print("✅ PIN Login - Token Saved: $token");
           print("✅ PIN Login - User Name: ${user["name"]}");
@@ -168,8 +175,8 @@ class _PinLoginScreenState extends State<PinLoginScreen> {
 
                       TextField(
                         controller: _emailCtrl,
-                        readOnly: true,
-                        enabled: false,
+                        //readOnly: true,
+                        //enabled: false,
                         style: TextStyle(color: Colors.black54),
                         decoration: InputDecoration(
                           labelText: 'Email',

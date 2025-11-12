@@ -351,18 +351,15 @@ class _HomeScreenState extends State<HomeScreen> {
       final savedPin = sp.getString('user_pin');
       final savedEmail = sp.getString('user_email');
       
-      // ✅ Clear ALL data including token, user data, etc.
       await sp.clear();
       
-      // ✅ Restore only PIN and email after logout
+      // ✅ Restore PIN and email after logout
       if (savedPin != null) {
         await sp.setString('user_pin', savedPin);
       }
       if (savedEmail != null) {
         await sp.setString('user_email', savedEmail);
       }
-      // ✅ Ensure is_logged_in is false
-      await sp.setBool('is_logged_in', false);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -374,10 +371,9 @@ class _HomeScreenState extends State<HomeScreen> {
             content: Text("Logout Successfully ✅",style: TextStyle(color: Colors.black,fontWeight: FontWeight.bold),)),
       );
 
-      // ✅ Redirect to AuthScreen instead of HomeScreen to force re-login
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => AuthScreen()),
+        MaterialPageRoute(builder: (_) => HomeScreen()),
             (route) => false,
       );
     }
