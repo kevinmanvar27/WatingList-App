@@ -23,12 +23,19 @@ class WaitingListScreenState extends State<WaitingListScreen> {
     loadUsers();
   }
 
-  void loadRestaurantStatus() async {
+  Future<void> loadRestaurantStatus() async {
     final data = await AuthService.fetchRestaurantDetail();
     setState(() {
-      // Assuming data["operational_status"] is a String like "true" or "false"
-      isRestaurantOpen = data["operational_status"] == "true";
-      currentRestaurantId = data["id"];
+      // Handle case when data is empty
+      if (data.isNotEmpty) {
+        // Assuming data["operational_status"] is a String like "true" or "false"
+        isRestaurantOpen = data["operational_status"] == "true";
+        currentRestaurantId = data["id"];
+      } else {
+        // Set default values when data is empty
+        isRestaurantOpen = false;
+        currentRestaurantId = null;
+      }
     });
     // Re-filter users after getting restaurant id
     loadUsers();
@@ -40,12 +47,19 @@ class WaitingListScreenState extends State<WaitingListScreen> {
     loadRestaurantStatus();
   }
 
-  void loadUsers() async {
+  Future<void> loadUsers() async {
     users = await ApiService.fetchUsers();
-    final bool hasValidRestaurantIds = users.any((u) => u.restaurantId != 0);
-    if (currentRestaurantId != null && hasValidRestaurantIds) {
+    
+    // For new users, if currentRestaurantId is null, try to load it again
+    if (currentRestaurantId == null) {
+      await loadRestaurantStatus();
+    }
+    
+    // Filter users by restaurant ID only if we have a valid restaurant ID
+    if (currentRestaurantId != null && currentRestaurantId != 0) {
       users = users.where((u) => u.restaurantId == currentRestaurantId).toList();
     }
+    
     users.sort((a, b) => a.id.compareTo(b.id));
     setState(() {});
   }

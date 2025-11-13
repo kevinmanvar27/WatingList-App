@@ -90,7 +90,10 @@ class _Setting_ScreenState extends State<Setting_Screen> {
       // ✅ Fallback: Load from API if not in SharedPreferences
       final data = await AuthService.fetchRestaurantDetail();
       setState(() {
-        isRestaurantOpen = data["operational_status"] == "true";
+        // Handle case when data is empty
+        isRestaurantOpen = data != null && data.isNotEmpty 
+            ? data["operational_status"] == "true" 
+            : false;
       });
       // Save to SharedPreferences for next time
       prefs.setBool("restaurant_open_status", isRestaurantOpen);
@@ -133,27 +136,41 @@ class _Setting_ScreenState extends State<Setting_Screen> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString("token");
 
-    final response = await http.get(
-      Uri.parse("https://waitinglist.rektech.work/api/restaurants/my-restaurant"),
-      headers: {"Authorization": "Bearer $token"},
-    );
+    // Check if token exists
+    if (token == null || token.isEmpty) {
+      return;
+    }
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body)["data"];
+    try {
+      final response = await http.get(
+        Uri.parse("https://waitinglist.rektech.work/api/restaurants/my-restaurant"),
+        headers: {"Authorization": "Bearer $token"},
+      );
 
-      // ✅ Convert profile to full URL
-      final imagePath = data["profile"];
-      final fullUrl = imagePath != null && imagePath.toString().trim().isNotEmpty
-          ? "https://waitinglist.rektech.work/storage/$imagePath"
-          : "";
+      if (response.statusCode == 200) {
+        final responseBody = json.decode(response.body);
+        final data = responseBody["data"];
 
-      setState(() {
-        restaurantName = data["name"] ?? "";
-        profileImage = fullUrl;          // ✅ Store it in state
-      });
+        // Check if data exists
+        if (data != null) {
+          // ✅ Convert profile to full URL
+          final imagePath = data["profile"];
+          final fullUrl = imagePath != null && imagePath.toString().trim().isNotEmpty
+              ? "https://waitinglist.rektech.work/storage/$imagePath"
+              : "";
 
-      // ✅ Save locally (optional, useful after app restart)
-      prefs.setString("profile_image", fullUrl);
+          setState(() {
+            restaurantName = data["name"] ?? "";
+            profileImage = fullUrl;          // ✅ Store it in state
+          });
+
+          // ✅ Save locally (optional, useful after app restart)
+          prefs.setString("profile_image", fullUrl);
+        }
+      }
+    } catch (e) {
+      // Handle error silently
+      print("Error loading restaurant: $e");
     }
   }
 
@@ -696,7 +713,7 @@ class _Setting_ScreenState extends State<Setting_Screen> {
                   ),
                 ),
                 const SizedBox(height: 25),
-
+/*
                 // Transaction History
                 const Text("Transaction History",
                   style: TextStyle(fontSize: 16,fontWeight: FontWeight.w600,color: Colors.black87),
@@ -770,7 +787,7 @@ class _Setting_ScreenState extends State<Setting_Screen> {
                           )).toList(),
                         ),
                 ),
-                const SizedBox(height: 25),
+                const SizedBox(height: 25),*/
               ],
             )
                 : SizedBox.shrink(),

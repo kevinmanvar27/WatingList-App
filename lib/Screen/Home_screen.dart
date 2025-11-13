@@ -76,12 +76,25 @@ class _HomeScreenState extends State<HomeScreen> {
       if (token != null && token.isNotEmpty) {
         final restaurantData = await AuthService.fetchRestaurantDetail();
         setState(() {
-          currentRestaurantId = restaurantData["id"];
+          // Handle case when restaurantData is empty
+          if (restaurantData != null && restaurantData.isNotEmpty) {
+            currentRestaurantId = restaurantData["id"];
+          } else {
+            currentRestaurantId = null;
+          }
         });
-        await sp.setInt("current_restaurant_id", currentRestaurantId!);
+        
+        // Only save to SharedPreferences if currentRestaurantId is not null
+        if (currentRestaurantId != null) {
+          await sp.setInt("current_restaurant_id", currentRestaurantId!);
+        } else {
+          // Remove the key if currentRestaurantId is null
+          await sp.remove("current_restaurant_id");
+        }
       }
     } catch (e) {
       // Error loading current restaurant ID
+      print("Error loading current restaurant ID: $e");
     }
   }
 
@@ -162,6 +175,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return Dialog(
+              backgroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -240,7 +254,20 @@ class _HomeScreenState extends State<HomeScreen> {
                               debounce?.cancel();
                               Navigator.pop(context);
                             },
-                            child: Text("Cancel"),
+                            style: OutlinedButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              side: BorderSide(color: Color(0xFFFF6B00)),
+                              padding: EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: Text(
+                              "Cancel",
+                              style: TextStyle(
+                                color: Color(0xFFFF6B00),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                         ),
                         SizedBox(width: 10),
@@ -253,7 +280,20 @@ class _HomeScreenState extends State<HomeScreen> {
                               debounce?.cancel();
                               Navigator.pop(context);
                             },
-                            child: Text("Apply"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(0xFFFF6B00),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              padding: EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: Text(
+                              "Apply",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -268,7 +308,13 @@ class _HomeScreenState extends State<HomeScreen> {
                             debounce?.cancel();
                             Navigator.pop(context);
                           },
-                          child: Text("Use current location"),
+                          child: Text(
+                            "Use current location",
+                            style: TextStyle(
+                              color: Color(0xFFFF6B00),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -283,7 +329,13 @@ class _HomeScreenState extends State<HomeScreen> {
                             debounce?.cancel();
                             Navigator.pop(context);
                           },
-                          child: Text("Clear filter"),
+                          child: Text(
+                            "Clear filter",
+                            style: TextStyle(
+                              color: Color(0xFFFF6B00),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ],
                     ),

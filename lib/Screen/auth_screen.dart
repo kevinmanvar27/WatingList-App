@@ -191,7 +191,9 @@ class _AuthScreenState extends State<AuthScreen> {
     
     try {
       final restaurant = await AuthService.fetchRestaurantDetail();
-      final needsProfile = (restaurant["name"] == null || (restaurant["name"] as String).trim().isEmpty);
+      // Handle case when restaurant data is empty
+      final needsProfile = restaurant == null || restaurant.isEmpty || 
+          (restaurant["name"] == null || (restaurant["name"] as String?).toString().trim().isEmpty);
 
       if (needsProfile) {
         Navigator.pushReplacement(

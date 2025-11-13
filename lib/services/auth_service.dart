@@ -39,8 +39,8 @@ class AuthService {
 
         // ✅ Save User Data in Local Storage
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString("user_name", user["name"] ?? "");
-        await prefs.setString("user_email", user["email"] ?? "");
+        await prefs.setString("user_name", user["name"] ?? googleUser.displayName ?? "");
+        await prefs.setString("user_email", user["email"] ?? googleUser.email ?? "");
         await prefs.setString("token", token ?? "");
 
         return data;
@@ -107,17 +107,38 @@ class AuthService {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     final token = prefs.getString("token");
 
+    // Check if token exists
+    if (token == null || token.isEmpty) {
+      // Return empty data structure instead of null
+      return {};
+    }
+
     final url = Uri.parse("https://waitinglist.rektech.work/api/restaurants/my-restaurant");
 
-    final response = await http.get(
-      url,
-      headers: {
-        "Authorization": "Bearer $token",
-        "Accept": "application/json",
-      },
-    );
-    final data = jsonDecode(response.body);
-    return data["data"];
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+        },
+      );
+
+      // Check if response is successful
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        // Check if data exists and is a Map
+        if (data != null && data["data"] != null && data["data"] is Map<String, dynamic>) {
+          return data["data"];
+        }
+      }
+      
+      // Return empty map if response is not successful or data is invalid
+      return {};
+    } catch (e) {
+      // Return empty map on error
+      return {};
+    }
   }
 //////////
   Future<List<dynamic>> fetchSubscriptions() async {

@@ -55,6 +55,9 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
   String? token;
   bool _isNewProfile = false;
 
+  // Field error state
+  Map<String, String> _fieldErrors = {};
+
   bool _showForgotPinCard = false;
 
   @override
@@ -113,13 +116,13 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
 
   Future<void> _signOut() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    
+
     // ✅ Save PIN and email before clearing
     final savedPin = prefs.getString('user_pin');
     final savedEmail = prefs.getString('user_email');
-    
+
     await prefs.clear();
-    
+
     // ✅ Restore PIN and email after logout
     if (savedPin != null) {
       await prefs.setString('user_pin', savedPin);
@@ -266,6 +269,11 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
               label: const Text("Save All", style: TextStyle(color: Colors.white, fontSize: 13)),
               onPressed: () {
                 FocusScope.of(context).unfocus();
+                // Clear previous field errors
+                setState(() {
+                  _fieldErrors.clear();
+                });
+
                 if (_formKey.currentState!.validate()) {
                   saveRestaurant();
                 } else {
@@ -360,66 +368,93 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
         bool email = false,
         bool phone = false,
         bool website = false,
-        bool enabled = true}) {  // ✅ NEW PARAM
+        bool enabled = true,
+        String? fieldName}) {  // ✅ NEW PARAM
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: TextFormField(
-        controller: controller,
-        enabled: enabled, // ✅ This disables the field
-        keyboardType: phone ? TextInputType.number : TextInputType.text,
-        maxLength: phone ? 10 : null,
-        inputFormatters: phone ? [
-          FilteringTextInputFormatter.digitsOnly,
-          LengthLimitingTextInputFormatter(10),
-        ] : null,
-        validator: (value) {
-          value = value?.trim() ?? "";
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextFormField(
+            controller: controller,
+            enabled: enabled, // ✅ This disables the field
+            keyboardType: phone ? TextInputType.number : TextInputType.text,
+            maxLength: phone ? 10 : null,
+            inputFormatters: phone ? [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(10),
+            ] : null,
+            validator: (value) {
+              value = value?.trim() ?? "";
 
-          if (required && value.isEmpty) return "$label is required";
+              if (required && value.isEmpty) return "$label is required";
 
-          if (phone && value.isNotEmpty) {
-            if (!RegExp(r'^[0-9]+$').hasMatch(value)) return "Numbers only allowed";
-            if (value.length != 10) return "Phone must be 10 digits";
-          }
+              if (phone && value.isNotEmpty) {
+                if (!RegExp(r'^[0-9]+$').hasMatch(value)) return "Numbers only allowed";
+                if (value.length != 10) return "Phone must be 10 digits";
+              }
 
-          if (email && value.isNotEmpty && !RegExp(r"^[\w\.-]+@[\w\.-]+\.\w+$").hasMatch(value)) {
-            return "Enter valid email";
-          }
+              if (email && value.isNotEmpty && !RegExp(r"^[\w\.-]+@[\w\.-]+\.\w+$").hasMatch(value)) {
+                return "Enter valid email";
+              }
 
-          if (website && value.isNotEmpty && !Uri.tryParse(value)!.isAbsolute == true) {
-            return "Enter valid website";
-          }
+              if (website && value.isNotEmpty && !Uri.tryParse(value)!.isAbsolute == true) {
+                return "Enter valid website";
+              }
 
-          return null;
-        },
+              return null;
+            },
 
-        decoration: _decoration(label).copyWith(
-          filled: true,
-          fillColor: enabled ? Colors.white : Colors.grey.shade200,
-          counterText: phone ? '' : null,
-        ),
+            decoration: _decoration(label).copyWith(
+              filled: true,
+              fillColor: enabled ? Colors.white : Colors.grey.shade200,
+              counterText: phone ? '' : null,
+            ),
+          ),
+          if (fieldName != null && _fieldErrors.containsKey(fieldName))
+            Padding(
+              padding: const EdgeInsets.only(top: 4.0),
+              child: Text(
+                _fieldErrors[fieldName]!,
+                style: TextStyle(color: Colors.red, fontSize: 12),
+              ),
+            ),
+        ],
       ),
     );
   }
 
 
 
-  Widget _simpleInput(String label, TextEditingController controller, {bool isPin = false}) {
+  Widget _simpleInput(String label, TextEditingController controller, {bool isPin = false, String? fieldName}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: isPin ? TextInputType.number : TextInputType.text,
-        maxLength: isPin ? 4 : null,
-        inputFormatters: isPin ? [
-          FilteringTextInputFormatter.digitsOnly,
-          LengthLimitingTextInputFormatter(4),
-        ] : null,
-        obscureText: isPin,
-        decoration: _decoration(label).copyWith(
-          counterText: isPin ? '' : null,
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextFormField(
+            controller: controller,
+            keyboardType: isPin ? TextInputType.number : TextInputType.text,
+            maxLength: isPin ? 4 : null,
+            inputFormatters: isPin ? [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(4),
+            ] : null,
+            obscureText: isPin,
+            decoration: _decoration(label).copyWith(
+              counterText: isPin ? '' : null,
+            ),
+          ),
+          if (fieldName != null && _fieldErrors.containsKey(fieldName))
+            Padding(
+              padding: const EdgeInsets.only(top: 4.0),
+              child: Text(
+                _fieldErrors[fieldName]!,
+                style: TextStyle(color: Colors.red, fontSize: 12),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -493,19 +528,25 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
 
     if (response.statusCode == 200) {
       // ✅ Save owner name to SharedPreferences for display in Settings
+      // This ensures the latest owner name is saved even if it was changed by the user
       await prefs.setString('user_name', ownerNameController.text);
       showMsg("✅ Saved Successfully");
-      
+
       // Check if this was first-time profile creation and redirect
       if (_isNewProfile) {
+        // Update _isNewProfile flag since profile is now created
+        setState(() {
+          _isNewProfile = false;
+        });
+
         // Navigate to subscription check after a short delay
         await Future.delayed(Duration(milliseconds: 800));
         if (!mounted) return;
-        
+
         try {
           final sub = await AuthService.fetchSubscriptionStatus();
           final hasActiveSubscription = sub != null && (sub["is_active"] == true);
-          
+
           if (!hasActiveSubscription) {
             Navigator.pushReplacement(
               context,
@@ -527,45 +568,38 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
     } else {
       try {
         var errorData = json.decode(resBody);
-        String errorMessage = "";
-        
+
         if (errorData['errors'] != null) {
           Map<String, dynamic> errors = errorData['errors'];
-          errorMessage = errors.values.map((e) => e is List ? e.join(', ') : e.toString()).join('\n');
+
+          // Clear previous errors
+          setState(() {
+            _fieldErrors.clear();
+
+            // Add new errors
+            errors.forEach((field, errorMessages) {
+              String errorMessage = errorMessages is List
+                  ? errorMessages.join(', ')
+                  : errorMessages.toString();
+              _fieldErrors[field] = errorMessage;
+            });
+          });
+
+          // Don't show a general message for field errors, only show under fields
         } else if (errorData['message'] != null) {
-          errorMessage = errorData['message'];
+          String errorMessage = errorData['message'];
+          showMsg(errorMessage, error: true);
         } else {
-          errorMessage = "Something went wrong";
+          showMsg("Something went wrong", error: true);
         }
-        
-        _showErrorDialog(errorMessage);
       } catch (e) {
-        _showErrorDialog("Error: $resBody");
+        showMsg("Error: $resBody", error: true);
       }
     }
   }
 
   void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.error_outline, color: Colors.red, size: 28),
-            SizedBox(width: 10),
-            Text("Error", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: Text(message, style: TextStyle(fontSize: 15)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("OK", style: TextStyle(color: Color(0xFFFF6B00), fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
+    showMsg(message, error: true);
   }
 
   Future<void> loadData() async {
@@ -584,17 +618,17 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
 
     if (response.statusCode == 200) {
       var data = json.decode(response.body)["data"];
-      
+
       // Check if profile exists
       _isNewProfile = (data["name"] == null || (data["name"] as String).trim().isEmpty);
 
       setState(() {
         // ✅ Owner name from API if available, otherwise from SharedPreferences
         ownerNameController.text = data["owner_name"] ?? spUserName;
-        
+
         // ✅ Restaurant name from API (if exists)
         rNameController.text = data["name"] ?? "";
-        
+
         phoneController.text = data["contact_number"] ?? "";
         websiteController.text = data["website"] ?? "";
 // ✅ Street should always be blank
@@ -711,44 +745,44 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
               key: _formKey,
               child: Column(
                 children: [
-                  _formInput("Owner Name", controller: ownerNameController, required: true),
-                  _formInput("Email", controller: emailController, email: true, enabled: false),
-                  _formInput("Restaurant Name *", controller: rNameController, required: true),
-                  _formInput("Contact Number *", controller: phoneController, phone: true),
-                  _formInput("Website", controller: websiteController, website: true),
+                  _formInput("Owner Name", controller: ownerNameController, required: true, fieldName: "owner_name"),
+                  _formInput("Email", controller: emailController, email: true, enabled: false, fieldName: "email"),
+                  _formInput("Restaurant Name *", controller: rNameController, required: true, fieldName: "name"),
+                  _formInput("Contact Number *", controller: phoneController, phone: true, fieldName: "contact_number"),
+                  _formInput("Website", controller: websiteController, website: true, fieldName: "website"),
                 ],
               ),
             ),
           ),
 
-          _sectionTitle("Address Information"),
-          _card(
-            child: Column(
-              children: [
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Color(0xFFFF6B00)),
-                  onPressed: () => fillAddressFromLocation(forceUpdate: true),
-                  child: Text(
-                    "📍 Use Current Location",
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            _sectionTitle("Address Information"),
+            _card(
+              child: Column(
+                children: [
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: Color(0xFFFF6B00)),
+                    onPressed: () => fillAddressFromLocation(forceUpdate: true),
+                    child: Text(
+                      "📍 Use Current Location",
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
                   ),
-                ),
-                SizedBox(height: 14),
-                _simpleInput("Street", streetController),
-                _simpleInput("Apartment (optional)", apartmentController),
-                Row(children: [
-                  Expanded(child: _simpleInput("City", cityController)),
-                  SizedBox(width: 12),
-                  Expanded(child: _simpleInput("State", stateController)),
-                ]),
-                Row(children: [
-                  Expanded(child: _simpleInput("Country", countryController)),
-                  SizedBox(width: 12),
-                  Expanded(child: _simpleInput("Postal code", postalCodeController)),
-                ]),
-              ],
+                  SizedBox(height: 14),
+                  _simpleInput("Street", streetController),
+                  _simpleInput("Apartment (optional)", apartmentController),
+                  Row(children: [
+                    Expanded(child: _simpleInput("City", cityController)),
+                    SizedBox(width: 12),
+                    Expanded(child: _simpleInput("State", stateController)),
+                  ]),
+                  Row(children: [
+                    Expanded(child: _simpleInput("Country", countryController)),
+                    SizedBox(width: 12),
+                    Expanded(child: _simpleInput("Postal code", postalCodeController)),
+                  ]),
+                ],
+              ),
             ),
-          ),
 
 /*          *//*_sectionTitle("Subscription Details"),///
           _card(
@@ -880,16 +914,67 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
                 children: [
                   Text("Change PIN", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   SizedBox(height: 12),
-                  _simpleInput("Current PIN", currentPin, isPin: true),
-                  _simpleInput("New PIN", newPin, isPin: true),
-                  _simpleInput("Confirm New PIN", confirmPin, isPin: true),
+                  _simpleInput("Current PIN", currentPin, isPin: true, fieldName: "current_pin"),
+                  _simpleInput("New PIN", newPin, isPin: true, fieldName: "new_pin"),
+                  _simpleInput("Confirm New PIN", confirmPin, isPin: true, fieldName: "confirm_pin"),
                   SizedBox(height: 10),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(backgroundColor: Color(0xFFFF6B00)),
                     onPressed: () {
-                      if (newPin.text.length != 4) return showMsg("PIN must be 4 digits", error: true);
-                      if (newPin.text != confirmPin.text) return showMsg("PINs do not match", error: true);
-                      changePin();
+                      // Clear previous field errors
+                      setState(() {
+                        _fieldErrors.remove("current_pin");
+                        _fieldErrors.remove("new_pin");
+                        _fieldErrors.remove("confirm_pin");
+                      });
+
+                      bool hasError = false;
+
+                      // Validate PIN fields
+                      if (currentPin.text.isEmpty) {
+                        setState(() {
+                          _fieldErrors["current_pin"] = "Current PIN is required";
+                        });
+                        hasError = true;
+                      } else if (currentPin.text.length != 4) {
+                        setState(() {
+                          _fieldErrors["current_pin"] = "PIN must be 4 digits";
+                        });
+                        hasError = true;
+                      }
+
+                      if (newPin.text.isEmpty) {
+                        setState(() {
+                          _fieldErrors["new_pin"] = "New PIN is required";
+                        });
+                        hasError = true;
+                      } else if (newPin.text.length != 4) {
+                        setState(() {
+                          _fieldErrors["new_pin"] = "PIN must be 4 digits";
+                        });
+                        hasError = true;
+                      }
+
+                      if (confirmPin.text.isEmpty) {
+                        setState(() {
+                          _fieldErrors["confirm_pin"] = "Confirm PIN is required";
+                        });
+                        hasError = true;
+                      } else if (confirmPin.text.length != 4) {
+                        setState(() {
+                          _fieldErrors["confirm_pin"] = "PIN must be 4 digits";
+                        });
+                        hasError = true;
+                      } else if (newPin.text != confirmPin.text) {
+                        setState(() {
+                          _fieldErrors["confirm_pin"] = "PINs do not match";
+                        });
+                        hasError = true;
+                      }
+
+                      if (!hasError) {
+                        changePin();
+                      }
                     },
                     child: Text("Update PIN", style: TextStyle(color: Colors.white)),
                   ),
@@ -905,11 +990,6 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
   Future<void> changePin() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString("token");
-
-    if (currentPin.text.isEmpty || newPin.text.isEmpty || confirmPin.text.isEmpty) {
-      showMsg("Please fill all fields", error: true);
-      return;
-    }
 
     var url = Uri.parse(
         "https://waitinglist.rektech.work/api/auth/change-pin?"
@@ -932,7 +1012,32 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
       confirmPin.clear();
       setState(() => _showForgotPinCard = false);
     } else {
-      showMsg("❌ ${data["message"] ?? "Failed to update PIN"}", error: true);
+      try {
+        if (data['errors'] != null) {
+          Map<String, dynamic> errors = data['errors'];
+
+          // Clear previous errors
+          setState(() {
+            _fieldErrors.remove("current_pin");
+            _fieldErrors.remove("new_pin");
+            _fieldErrors.remove("confirm_pin");
+
+            // Add new errors
+            errors.forEach((field, errorMessages) {
+              String errorMessage = errorMessages is List
+                  ? errorMessages.join(', ')
+                  : errorMessages.toString();
+              _fieldErrors[field] = errorMessage;
+            });
+          });
+        } else if (data['message'] != null) {
+          showMsg("❌ ${data["message"] ?? "Failed to update PIN"}", error: true);
+        } else {
+          showMsg("Failed to update PIN", error: true);
+        }
+      } catch (e) {
+        showMsg("Failed to update PIN", error: true);
+      }
     }
   }
 
