@@ -4,6 +4,7 @@ import 'package:waiting_list/Screen/pin_login_screen.dart';
 import '../services/auth_service.dart';
 import 'Home_screen.dart';
 import 'pin_setup_screen.dart';
+import 'Business_profile_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   @override
@@ -39,9 +40,9 @@ class _AuthScreenState extends State<AuthScreen> {
         await sp.remove('user_id');
 
         // 2) Persist new session atomically
-        await sp.setString('token', token ?? "");
+        await sp.setString('token', token);
         await sp.setBool('is_logged_in', true);
-        await sp.setString('user_email', email ?? "");
+        await sp.setString('user_email', email);
         await sp.setString('user_name', user['name'] ?? "");
         if (user['id'] != null) {
           await sp.setInt('user_id', user['id']);
@@ -55,10 +56,8 @@ class _AuthScreenState extends State<AuthScreen> {
             MaterialPageRoute(builder: (_) => PinSetupScreen(email: email)),
           );
         } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => HomeScreen()),
-          );
+          // Post-auth routing: check profile -> subscription -> home
+          _navigateBasedOnStatus();
         }
 
       } else {
@@ -185,5 +184,36 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _navigateBasedOnStatus() async {
+    if (!mounted) return;
+    
+    try {
+      final restaurant = await AuthService.fetchRestaurantDetail();
+      final needsProfile = (restaurant["name"] == null || (restaurant["name"] as String).trim().isEmpty);
+
+      if (needsProfile) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => Business_profile_screen()),
+        );
+        return;
+      }
+
+      final sub = await AuthService.fetchSubscriptionStatus();
+      final hasActiveSubscription = sub != null && (sub["is_active"] == true);
+      
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => hasActiveSubscription ? HomeScreen() : HomeScreen(initialIndex: 2)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => HomeScreen()),
+      );
+    }
   }
 }

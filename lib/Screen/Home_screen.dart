@@ -29,7 +29,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<RestaurantUser> users = [];
   void loadUsers() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
     users = await ApiService.fetchUsers();
     setState(() {});
   }

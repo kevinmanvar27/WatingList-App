@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'Home_screen.dart';
 import 'auth_screen.dart';
+import 'Business_profile_screen.dart';
+import '../services/auth_service.dart';
 
 class PinLoginScreen extends StatefulWidget {
   @override
@@ -94,10 +96,7 @@ class _PinLoginScreenState extends State<PinLoginScreen> {
           print("✅ PIN Login - User Name: ${user["name"]}");
         }
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => HomeScreen()),
-        );
+        _navigateBasedOnStatus();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(data['message'] ?? "Invalid Email or PIN")),
@@ -106,6 +105,34 @@ class _PinLoginScreenState extends State<PinLoginScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Something went wrong!")),
+      );
+    }
+  }
+
+  Future<void> _navigateBasedOnStatus() async {
+    try {
+      final restaurant = await AuthService.fetchRestaurantDetail();
+      final needsProfile = (restaurant["name"] == null || (restaurant["name"] as String).trim().isEmpty);
+
+      if (needsProfile) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => Business_profile_screen()),
+        );
+        return;
+      }
+
+      final sub = await AuthService.fetchSubscriptionStatus();
+      final hasActiveSubscription = sub != null && (sub["is_active"] == true);
+      
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => hasActiveSubscription ? HomeScreen() : HomeScreen(initialIndex: 2)),
+      );
+    } catch (e) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => HomeScreen()),
       );
     }
   }

@@ -27,6 +27,13 @@ class ApiService {
     String? token = prefs.getString("token");
     print("🔹 Adding restaurant user...");
     print("➡️ Name: $name, Mobile: $mobile, Total Persons: $totalPersons");
+    
+    // Normalize phone to E.164 if it's 10 digits (Indian format)
+    String normalizedMobile = mobile;
+    if (mobile.length == 10 && !mobile.startsWith('+')) {
+      normalizedMobile = '+91$mobile';
+    }
+    
     final response = await http.post(
       Uri.parse("$baseUrl/restaurant-users"),
       headers: {
@@ -35,7 +42,7 @@ class ApiService {
       },
       body: {
         "username": name,
-        "mobile_number": mobile,
+        "mobile_number": normalizedMobile,
         "total_users_count": totalPersons
       },
     );
@@ -97,6 +104,12 @@ class ApiService {
 
     final url = Uri.parse("$baseUrl/restaurant-users/$id");
 
+    // Normalize phone to E.164 if it's 10 digits (Indian format)
+    String normalizedMobile = mobile;
+    if (mobile.length == 10 && !mobile.startsWith('+')) {
+      normalizedMobile = '+91$mobile';
+    }
+
     final response = await http.put(
       url,
       headers: {
@@ -106,7 +119,7 @@ class ApiService {
       },
       body: jsonEncode({
         "username": name,
-        "mobile_number": mobile,
+        "mobile_number": normalizedMobile,
         "total_users_count": persons,
         "status": "waiting"
       }),

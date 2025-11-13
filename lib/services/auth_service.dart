@@ -117,8 +117,6 @@ class AuthService {
       },
     );
     final data = jsonDecode(response.body);
-    final profilePath = data["data"]["profile"];
-    final profileUrl = "https://waitinglist.rektech.work/storage/$profilePath";
     return data["data"];
   }
 //////////

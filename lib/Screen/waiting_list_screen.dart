@@ -41,7 +41,6 @@ class WaitingListScreenState extends State<WaitingListScreen> {
   }
 
   void loadUsers() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
     users = await ApiService.fetchUsers();
     final bool hasValidRestaurantIds = users.any((u) => u.restaurantId != 0);
     if (currentRestaurantId != null && hasValidRestaurantIds) {

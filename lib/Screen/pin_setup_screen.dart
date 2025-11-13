@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'Home_screen.dart';
 import 'package:http/http.dart' as http;
+import 'Business_profile_screen.dart';
+import '../services/auth_service.dart';
 
 class PinSetupScreen extends StatefulWidget {
   final String email;
@@ -74,10 +76,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
         await sp.setString('user_pin', pin);
         await sp.setString('user_email', widget.email);
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => HomeScreen()),
-        );
+        _navigateBasedOnStatus();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Failed to set PIN, try again.")),
@@ -90,6 +89,37 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
       );
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _navigateBasedOnStatus() async {
+    if (!mounted) return;
+    
+    try {
+      final restaurant = await AuthService.fetchRestaurantDetail();
+      final needsProfile = (restaurant["name"] == null || (restaurant["name"] as String).trim().isEmpty);
+
+      if (needsProfile) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => Business_profile_screen()),
+        );
+        return;
+      }
+
+      final sub = await AuthService.fetchSubscriptionStatus();
+      final hasActiveSubscription = sub != null && (sub["is_active"] == true);
+      
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => hasActiveSubscription ? HomeScreen() : HomeScreen(initialIndex: 2)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => HomeScreen()),
+      );
     }
   }
 

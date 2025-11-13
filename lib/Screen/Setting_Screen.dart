@@ -26,17 +26,16 @@ class _Setting_ScreenState extends State<Setting_Screen> {
   List<RestaurantUser> users = [];
 
   void loadUsers() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
     users = await ApiService.fetchUsers();
     setState(() {});
   }
 
-  final AuthService _auth = AuthService();
   final SubscriptionService _subscriptionService = SubscriptionService();
   List<dynamic> _plans = [];
   bool _loading = true;
   bool _hasActiveSubscription = true;
   bool isRestaurantOpen = false;
+  List<dynamic> _transactions = [];
 
   String userName = "";
   String userEmail = "";
@@ -55,6 +54,8 @@ class _Setting_ScreenState extends State<Setting_Screen> {
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+
+    _fetchTransactions();
   }
 
   @override
@@ -117,6 +118,15 @@ class _Setting_ScreenState extends State<Setting_Screen> {
         _hasActiveSubscription = false;
       });
     }
+  }
+
+  Future<void> _fetchTransactions() async {
+    try {
+      final tx = await AuthService.fetchUserTransactions();
+      setState(() {
+        _transactions = tx;
+      });
+    } catch (_) {}
   }
 
   Future<void> loadRestaurant() async {
@@ -304,7 +314,7 @@ class _Setting_ScreenState extends State<Setting_Screen> {
     }
   }
 
-  void openCheckout(int amount, String planName) {
+  void openCheckout(int amount, String planName, {String? orderId}) {
     var options = {
       'key': 'rzp_test_Go3jN8rdNmRJ7P',
       'amount': amount * 100,
@@ -314,6 +324,7 @@ class _Setting_ScreenState extends State<Setting_Screen> {
         'contact': '9316842475',
         'email': 'rohit.rektech@gmail.com',
       },
+      if (orderId != null) 'order_id': orderId,
     };
 
     try {
@@ -338,10 +349,9 @@ class _Setting_ScreenState extends State<Setting_Screen> {
       SnackBar(content: Text("Payment Successful ✅")),
     );
 
-    /*SharedPreferences prefs = await SharedPreferences.getInstance();
+    SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString("token");
 
-    // ✅ Receive currently selected plan price and duration from last Buy Now click
     final selectedPlan = prefs.getString("selected_plan_id") ?? "";
     final selectedAmount = prefs.getString("selected_plan_amount") ?? "";
 
@@ -374,14 +384,13 @@ class _Setting_ScreenState extends State<Setting_Screen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Subscription Activated ✅")),
       );
-
-      /// ✅ Refresh UI (reload plans/status)
       fetchPlans();
+      _fetchTransactions();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Activation Failed ❌")),
       );
-    }*/
+    }
   }
 
 
@@ -658,9 +667,19 @@ class _Setting_ScreenState extends State<Setting_Screen> {
                                     prefs.setString("selected_plan_id", plan['id'].toString());
                                     prefs.setString("selected_plan_amount", plan['price'].toString());
 
+                                    // Create Razorpay order first
+                                    final order = await AuthService.createRazorpayOrder(int.tryParse(plan['id'].toString()) ?? 0);
+                                    if (order == null) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text("Failed to create payment order")),
+                                      );
+                                      return;
+                                    }
+
                                     openCheckout(
-                                      double.parse(plan['price'].toString()).round(), // ✅ amount
-                                      plan['name'],                                   // ✅ plan name
+                                      double.parse(order['amount'].toString()).round(),
+                                      plan['name'],
+                                      orderId: order['order_id'],
                                     );
                                   },
                                   child: const Text(
@@ -675,6 +694,81 @@ class _Setting_ScreenState extends State<Setting_Screen> {
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(height: 25),
+
+                // Transaction History
+                const Text("Transaction History",
+                  style: TextStyle(fontSize: 16,fontWeight: FontWeight.w600,color: Colors.black87),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.grey.shade300, width: 1),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.20),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: _transactions.isEmpty
+                      ? Center(child: Text("No transactions found", style: TextStyle(color: Colors.black54)))
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: _transactions.map((tx) => Container(
+                            margin: EdgeInsets.only(bottom: 12),
+                            padding: EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Color(0xFFF9FAFB),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.receipt_long, color: Colors.blueAccent, size: 24),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        tx["plan_name"] ?? "Subscription",
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        "₹${tx["amount"]} • ${tx["payment_method"]}",
+                                        style: TextStyle(fontSize: 13, color: Colors.black54),
+                                      ),
+                                      Text(
+                                        tx["created_at"].toString().split(" ").first,
+                                        style: TextStyle(fontSize: 12, color: Colors.black45),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: tx["status"] == "success" ? Colors.green : Colors.red,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    tx["status"] ?? "unknown",
+                                    style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )).toList(),
+                        ),
                 ),
                 const SizedBox(height: 25),
               ],

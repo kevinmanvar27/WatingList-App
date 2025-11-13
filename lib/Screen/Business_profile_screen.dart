@@ -11,6 +11,7 @@ import 'package:waiting_list/Screen/pin_login_screen.dart';
 import 'Home_screen.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'dart:math';
+import '../services/auth_service.dart';
 
 class Business_profile_screen extends StatefulWidget {
   const Business_profile_screen({super.key});
@@ -52,6 +53,7 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
   final ImagePicker _picker = ImagePicker();
   String? restaurantImageUrl;
   String? token;
+  bool _isNewProfile = false;
 
   bool _showForgotPinCard = false;
 
@@ -493,6 +495,35 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
       // ✅ Save owner name to SharedPreferences for display in Settings
       await prefs.setString('user_name', ownerNameController.text);
       showMsg("✅ Saved Successfully");
+      
+      // Check if this was first-time profile creation and redirect
+      if (_isNewProfile) {
+        // Navigate to subscription check after a short delay
+        await Future.delayed(Duration(milliseconds: 800));
+        if (!mounted) return;
+        
+        try {
+          final sub = await AuthService.fetchSubscriptionStatus();
+          final hasActiveSubscription = sub != null && (sub["is_active"] == true);
+          
+          if (!hasActiveSubscription) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => HomeScreen(initialIndex: 2)),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => HomeScreen()),
+            );
+          }
+        } catch (_) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => HomeScreen()),
+          );
+        }
+      }
     } else {
       try {
         var errorData = json.decode(resBody);
@@ -553,6 +584,9 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
 
     if (response.statusCode == 200) {
       var data = json.decode(response.body)["data"];
+      
+      // Check if profile exists
+      _isNewProfile = (data["name"] == null || (data["name"] as String).trim().isEmpty);
 
       setState(() {
         // ✅ Owner name from API if available, otherwise from SharedPreferences
