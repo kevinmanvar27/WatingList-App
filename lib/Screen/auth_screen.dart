@@ -191,14 +191,19 @@ class _AuthScreenState extends State<AuthScreen> {
     
     try {
       final restaurant = await AuthService.fetchRestaurantDetail();
+      print("Restaurant data after login: $restaurant");
+      
       // Handle case when restaurant data is empty
       final needsProfile = restaurant == null || restaurant.isEmpty || 
           (restaurant["name"] == null || (restaurant["name"] as String?).toString().trim().isEmpty);
 
       if (needsProfile) {
+        print("User needs to set up restaurant profile");
+        // Show a dialog to inform the user they can still access waiting list
+        // but should set up their profile for full functionality
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => Business_profile_screen()),
+          MaterialPageRoute(builder: (_) => HomeScreen(initialIndex: 1)), // Go directly to waiting list
         );
         return;
       }
@@ -208,13 +213,14 @@ class _AuthScreenState extends State<AuthScreen> {
       
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => hasActiveSubscription ? HomeScreen() : HomeScreen(initialIndex: 2)),
+        MaterialPageRoute(builder: (_) => HomeScreen()), // Always go to Home screen after login
       );
     } catch (e) {
+      print("Error during navigation: $e");
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => HomeScreen()),
+        MaterialPageRoute(builder: (_) => HomeScreen(initialIndex: 1)), // Go to waiting list as fallback
       );
     }
   }

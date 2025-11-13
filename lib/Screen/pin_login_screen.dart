@@ -129,7 +129,7 @@ class _PinLoginScreenState extends State<PinLoginScreen> {
       
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => hasActiveSubscription ? HomeScreen() : HomeScreen(initialIndex: 2)),
+        MaterialPageRoute(builder: (_) => HomeScreen()), // Always go to Home screen after login
       );
     } catch (e) {
       Navigator.pushReplacement(

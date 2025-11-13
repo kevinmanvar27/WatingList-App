@@ -50,14 +50,16 @@ class ApiService {
     print("📩 Response Status Code: ${response.statusCode}");
     print("📩 Response Body: ${response.body}");
 
-    if (response.statusCode == 200) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
       print("response:-${response.body}");
 
       final jsonData = json.decode(response.body);
       print("✅ User Added Successfully!");
       print("👤 Parsed Data: ${jsonData["data"]}");
       return RestaurantUser.fromJson(jsonData["data"]);
-
+    } else {
+      print("❌ Failed to add user. Status code: ${response.statusCode}");
+      print("Response body: ${response.body}");
     }
     return null;
   }
@@ -74,11 +76,16 @@ class ApiService {
       },
     );
 
+    print("Fetching users - Status Code: ${response.statusCode}");
+    print("Fetching users - Response Body: ${response.body}");
+
     if (response.statusCode == 200) {
       final jsonData = json.decode(response.body);
       final List list = jsonData["data"];
+      print("Fetched ${list.length} users");
       return list.map((e) => RestaurantUser.fromJson(e)).toList();
     } else {
+      print("Failed to fetch users - Status Code: ${response.statusCode}");
       return [];
     }
   }
@@ -125,18 +132,18 @@ class ApiService {
       }),
     );
 
-    return response.statusCode == 200;
+    return response.statusCode == 200 || response.statusCode == 201;
   }
 
   // ✅ Correct Mark Dine-In
   static Future<bool> markDineIn(int id) async {
     final response = await postApi("$baseUrl/restaurant-users/$id/mark-dine-in");
-    return response.statusCode == 200;
+    return response.statusCode == 200 || response.statusCode == 201;
   }
 
   // ✅ Correct Mark Waiting
   static Future<bool> markWaiting(int id) async {
     final response = await postApi("$baseUrl/restaurant-users/$id/mark-waiting");
-    return response.statusCode == 200;
+    return response.statusCode == 200 || response.statusCode == 201;
   }
 }

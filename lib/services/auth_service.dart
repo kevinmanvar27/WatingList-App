@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../Api_Model/restaurant_user_model.dart';
 
 class AuthService {
+  static const String baseUrl = "https://waitinglist.rektech.work/api";
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email']);
 
@@ -106,14 +107,17 @@ class AuthService {
   static Future<Map<String, dynamic>> fetchRestaurantDetail() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     final token = prefs.getString("token");
+    print("Fetching restaurant detail with token: $token");
 
     // Check if token exists
     if (token == null || token.isEmpty) {
+      print("No token found, returning empty data");
       // Return empty data structure instead of null
       return {};
     }
 
     final url = Uri.parse("https://waitinglist.rektech.work/api/restaurants/my-restaurant");
+    print("Fetching restaurant detail from: $url");
 
     try {
       final response = await http.get(
@@ -124,18 +128,28 @@ class AuthService {
         },
       );
 
+      print("Restaurant detail response - Status: ${response.statusCode}");
+      print("Restaurant detail response - Body: ${response.body}");
+
       // Check if response is successful
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         // Check if data exists and is a Map
         if (data != null && data["data"] != null && data["data"] is Map<String, dynamic>) {
+          print("Restaurant detail fetched successfully: ${data["data"]}");
           return data["data"];
+        } else {
+          print("Invalid data format in response");
         }
+      } else {
+        print("Failed to fetch restaurant detail. Status code: ${response.statusCode}");
       }
       
       // Return empty map if response is not successful or data is invalid
+      print("Returning empty data");
       return {};
     } catch (e) {
+      print("Exception while fetching restaurant detail: $e");
       // Return empty map on error
       return {};
     }
@@ -313,6 +327,23 @@ class AuthService {
     // Sign out from providers
     await _googleSignIn.signOut();
     await _auth.signOut();
+  }
+
+  // 🔥 Specific Restaurant Waiting Users API
+  static Future<List<RestaurantUser>> fetchUsersByRestaurant(int restaurantId) async {
+    try {
+      final url = Uri.parse("$baseUrl/restaurants/$restaurantId/waiting-users");
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        List data = jsonDecode(response.body);
+        return data.map((json) => RestaurantUser.fromJson(json)).toList();
+      } else {
+        return [];
+      }
+    } catch (e) {
+      return [];
+    }
   }
 
   Future<Map<String, String>> getUser() async {

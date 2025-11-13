@@ -24,17 +24,22 @@ class WaitingListScreenState extends State<WaitingListScreen> {
   }
 
   Future<void> loadRestaurantStatus() async {
+    print("Loading restaurant status...");
     final data = await AuthService.fetchRestaurantDetail();
+    print("Restaurant data: $data");
+    
     setState(() {
       // Handle case when data is empty
       if (data.isNotEmpty) {
         // Assuming data["operational_status"] is a String like "true" or "false"
         isRestaurantOpen = data["operational_status"] == "true";
         currentRestaurantId = data["id"];
+        print("Restaurant is open: $isRestaurantOpen, ID: $currentRestaurantId");
       } else {
         // Set default values when data is empty
         isRestaurantOpen = false;
         currentRestaurantId = null;
+        print("No restaurant data found, setting defaults");
       }
     });
     // Re-filter users after getting restaurant id
@@ -48,16 +53,26 @@ class WaitingListScreenState extends State<WaitingListScreen> {
   }
 
   Future<void> loadUsers() async {
+    print("Loading users...");
     users = await ApiService.fetchUsers();
+    print("Loaded ${users.length} users");
     
     // For new users, if currentRestaurantId is null, try to load it again
     if (currentRestaurantId == null) {
+      print("Current restaurant ID is null, trying to load restaurant status...");
       await loadRestaurantStatus();
     }
     
+    print("Current restaurant ID: $currentRestaurantId");
+    
     // Filter users by restaurant ID only if we have a valid restaurant ID
+    // If currentRestaurantId is null or 0, show all users (fallback for debugging)
     if (currentRestaurantId != null && currentRestaurantId != 0) {
+      print("Filtering users by restaurant ID: $currentRestaurantId");
       users = users.where((u) => u.restaurantId == currentRestaurantId).toList();
+      print("Filtered to ${users.length} users");
+    } else {
+      print("Not filtering users by restaurant ID (showing all users)");
     }
     
     users.sort((a, b) => a.id.compareTo(b.id));
@@ -74,7 +89,6 @@ class WaitingListScreenState extends State<WaitingListScreen> {
   bool dineInChecked = false;
   bool isRestaurantOpen = false;
   int? currentRestaurantId;
-
 
   @override
   Widget build(BuildContext context) {
@@ -104,6 +118,7 @@ class WaitingListScreenState extends State<WaitingListScreen> {
                 style: TextStyle(color: Colors.white, fontSize: 13),
               ),
               onPressed: () async {
+                
                 if (!isRestaurantOpen) {
                   bool? proceed = await showDialog(
                     context: context,
@@ -218,6 +233,17 @@ class WaitingListScreenState extends State<WaitingListScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       ),
                       onPressed: () async {
+                        // Check if user has a restaurant profile
+                        if (currentRestaurantId == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text("Please set up your restaurant profile in Settings first"),
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                          return;
+                        }
+                        
                         bool? newStatus = await AuthService.toggleRestaurantStatus();
 
                         if (newStatus != null) {
@@ -264,6 +290,40 @@ class WaitingListScreenState extends State<WaitingListScreen> {
               ],
             ),
             SizedBox(height: 30),
+            // Show a message if there's no restaurant profile
+            if (currentRestaurantId == null)
+              Container(
+                padding: EdgeInsets.all(16),
+                margin: EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.info_outline, size: 40, color: Colors.orange),
+                    SizedBox(height: 10),
+                    Text(
+                      "Restaurant Profile Not Set Up",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      "Please set up your restaurant profile in the Settings tab to fully use the waiting list features.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.orange.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             // Card Table
             Expanded(
               child: SingleChildScrollView(
@@ -381,7 +441,6 @@ class WaitingListScreenState extends State<WaitingListScreen> {
                               ),
 
 
-
                               Expanded(
                                 child: IconButton(
                                   icon: Icon(Icons.call),
@@ -397,6 +456,17 @@ class WaitingListScreenState extends State<WaitingListScreen> {
                                   icon: Icon(Icons.delete),
                                   color: Colors.red,
                                   onPressed: () async {
+                                    // Check if user has a restaurant profile
+                                    if (currentRestaurantId == null) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text("Please set up your restaurant profile first"),
+                                          duration: Duration(seconds: 3),
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    
                                     bool deleted = await ApiService.deleteUser(user.id);
                                     if (deleted) {
                                       ScaffoldMessenger.of(context).showSnackBar(
@@ -563,18 +633,50 @@ class WaitingListScreenState extends State<WaitingListScreen> {
                               onPressed: () async {
                                 if (_formKey.currentState!.validate()) {
 
+                                  // Check if user has a restaurant profile before adding
+                                  if (currentRestaurantId == null) {
+                                    Navigator.pop(context); // Close the dialog
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text("Please set up your restaurant profile in Settings first"),
+                                        duration: Duration(seconds: 3),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
                                   final personCount = personsCtrl.text.isEmpty ? "1" : personsCtrl.text;
 
+                                  RestaurantUser? result;
                                   if (user == null) {
-                                    await ApiService.addRestaurantUser(
+                                    result = await ApiService.addRestaurantUser(
                                         nameCtrl.text, mobileCtrl.text, personCount);
                                   } else {
-                                    await ApiService.editUser(
-                                        user.id, nameCtrl.text, mobileCtrl.text, personCount);
+                                    result = await ApiService.editUser(
+                                        user.id, nameCtrl.text, mobileCtrl.text, personCount) ? user : null;
                                   }
 
                                   Navigator.pop(context);
-                                  loadUsers();
+                                  if (result != null) {
+                                    loadUsers();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(user == null 
+                                          ? "Person added successfully" 
+                                          : "Person updated successfully"),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(user == null 
+                                          ? "Failed to add person" 
+                                          : "Failed to update person"),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
                                 }
                               },
                               child: Text(

@@ -276,8 +276,6 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
 
                 if (_formKey.currentState!.validate()) {
                   saveRestaurant();
-                } else {
-                  showMsg("Please fix validation errors", error: true);
                 }
               },
             ),
@@ -545,19 +543,11 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
 
         try {
           final sub = await AuthService.fetchSubscriptionStatus();
-          final hasActiveSubscription = sub != null && (sub["is_active"] == true);
-
-          if (!hasActiveSubscription) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => HomeScreen(initialIndex: 2)),
-            );
-          } else {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => HomeScreen()),
-            );
-          }
+          // Removed unused subscription check
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => HomeScreen()),
+          );
         } catch (_) {
           Navigator.pushReplacement(
             context,
@@ -631,17 +621,11 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
 
         phoneController.text = data["contact_number"] ?? "";
         websiteController.text = data["website"] ?? "";
-// ✅ Street should always be blank
-        streetController.text = "";
+// ✅ Street should get address_line_1 data
+        streetController.text = data["address_line_1"] ?? "";
 
-// ✅ Apartment should get old saved address_line_1 if available
-        apartmentController.text = data["address_line_1"] ?? "";
-
-// ✅ If address_line_2 exists, append or use it
-        if ((data["address_line_2"] ?? "").isNotEmpty) {
-          apartmentController.text +=
-          apartmentController.text.isEmpty ? data["address_line_2"] : ", ${data["address_line_2"]}";
-        }
+// ✅ Apartment should get address_line_2 data
+        apartmentController.text = data["address_line_2"] ?? "";
         cityController.text = data["city"] ?? "";
         stateController.text = data["state"] ?? "";
         countryController.text = data["country"] ?? "";
@@ -664,11 +648,11 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
       Placemark place = placeMarks[0];
 
       setState(() {
-        // ✅ Street value should NOT fill auto
-        streetController.text = "";
+        // ✅ Street value should get the street from location
+        streetController.text = place.street ?? "";
 
-        // ✅ Auto Fill should go to Apartment instead of Street
-        apartmentController.text = place.street ?? "";
+        // ✅ Apartment should remain as is or be empty
+        // apartmentController.text = ""; // Keep existing value or leave empty
 
         // ✅ Other fields update normally
         if (forceUpdate || cityController.text.isEmpty) {
@@ -687,9 +671,7 @@ class _Business_profile_screenState extends State<Business_profile_screen> {
 
 
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Location not found. Please enable GPS.")),
-      );
+      showMsg("Location not found. Please enable GPS.", error: true);
     }
   }
 
